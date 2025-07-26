@@ -15,7 +15,9 @@
     "clean": "turbo clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "add:hey": "pnpm add $1 --filter @hey-world/hey",
-    "up:hey": "pnpm up $1 --filter @hey-world/hey"
+    "up:hey": "pnpm up $1 --filter @hey-world/hey",
+    "add:lib": "pnpm add $1 --filter @hey-world/lib",
+    "up:lib": "pnpm up $1 --filter @hey-world/lib"
   },
   "devDependencies": {
     "turbo": "latest",

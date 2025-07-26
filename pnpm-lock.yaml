@@ -113,7 +113,14 @@ importers:
         specifier: ^19
         version: 19.0.3(@types/react@19.0.8)
 
-  packages/lib: {}
+  packages/lib:
+    dependencies:
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.0.1
+        version: 3.0.1
 
   packages/ui:
     dependencies:
