@@ -45,6 +45,17 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
     setIsMenuOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) {
+        setIsMenuOpen(false);
+      }
+    });
+    return () => {
+      window.removeEventListener('resize', () => {});
+    };
+  }, []);
+
   return (
     <header
       className={cn(
@@ -121,7 +132,7 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
           </Button>
         </div>
         {isMenuOpen && (
-          <div className="fixed inset-x-0 top-16 z-50 h-[calc(100vh-3rem)] overflow-y-auto bg-background p-4 px-6 shadow-md md:hidden">
+          <div className="fixed inset-x-0 top-16 z-50 h-[calc(100vh-3rem)] overflow-y-auto bg-background p-4 shadow-md md:hidden">
             <nav className="flex flex-col space-y-2">
               {pages?.map((page) => (
                 <Button
