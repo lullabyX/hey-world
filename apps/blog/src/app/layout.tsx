@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
 import '@hey-world/ui/src/globals.css';
 import SiteHeader from '@hey-world/components/src/site-header';
-import ThemeProvider from '@hey-world/components/src/theme-provider';
-import { ThemeScript, geistSans, geistMono } from '@hey-world/components';
+import {
+  ThemeScript,
+  geistSans,
+  geistMono,
+  ThemeProvider,
+} from '@hey-world/components';
 
 export const metadata: Metadata = {
   title: 'Hey Blog!',

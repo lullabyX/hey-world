@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { cn } from '@hey-world/lib';
-import ThemeSwitcher from './theme-switcher';
+import ThemeSwitcher from '../theme/theme-switcher';
 import Link from 'next/link';
 import { Button } from '@hey-world/ui';
 import { usePathname } from 'next/navigation';
