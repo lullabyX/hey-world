@@ -18,6 +18,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const isDev = process.env.NODE_ENV === 'development';
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -31,7 +33,7 @@ export default function RootLayout({
             title="Hey World!"
             titleHref="/"
             pages={[
-              { name: 'Blog', href: '/blog' },
+              { name: 'Blog', href: isDev ? 'http://localhost:3000' : '/blog' },
               { name: 'About', href: '/about' },
               { name: 'Contact', href: '/contact' },
             ]}
