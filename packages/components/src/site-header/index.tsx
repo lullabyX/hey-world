@@ -49,8 +49,8 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
         className={cn(
           'flex h-16 items-center justify-between bg-background/80 px-6 transition-all duration-300 ease-in-out',
           isScrolled
-            ? 'border-slate w-3/4 rounded-full border shadow-sm'
-            : 'w-full rounded-none border border-transparent'
+            ? 'border-slate w-3/4 max-w-7xl rounded-full border shadow-sm'
+            : 'w-full max-w-full rounded-none border border-transparent'
         )}
       >
         <Link
