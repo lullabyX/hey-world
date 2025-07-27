@@ -82,7 +82,7 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased transition-all duration-300 ease-in-out`}
       >
         <ThemeProvider>
           <SiteHeader title="hey" />

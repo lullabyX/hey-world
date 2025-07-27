@@ -14,6 +14,8 @@
     "lint": "turbo lint",
     "clean": "turbo clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "add:dev:workspace": "pnpm add -D $1 -w",
+    "add:workspace": "pnpm add $1 -w",
     "add:hey": "pnpm add $1 --filter @hey-world/hey",
     "up:hey": "pnpm up $1 --filter @hey-world/hey",
     "remove:hey": "pnpm remove $1 --filter @hey-world/hey",
@@ -25,13 +27,14 @@
     "remove:components": "pnpm remove $1 --filter @hey-world/components"
   },
   "devDependencies": {
-    "turbo": "latest",
-    "typescript": "^5",
+    "@types/node": "^20.17.17",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8",
     "prettier": "latest",
     "prettier-plugin-tailwindcss": "^0.6.13",
     "tailwindcss": "^3.4.1",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "turbo": "latest",
+    "typescript": "^5"
   }
 }

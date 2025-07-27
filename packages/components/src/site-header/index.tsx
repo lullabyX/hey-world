@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { cn } from '@hey-world/lib';
-import { useTheme } from 'next-themes';
 import ThemeSwitcher from './theme-switcher';
 
 interface SiteHeaderProps extends React.HTMLAttributes<HTMLElement> {
@@ -15,29 +14,41 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
   ...props
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setIsScrolled(window.scrollY > 10);
+      }, 100);
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 w-full transition-all duration-300',
-        isScrolled
-          ? 'h-12 rounded-b-lg bg-background/50 shadow-md backdrop-blur-md'
-          : 'h-16 bg-transparent',
+        'sticky top-0 z-50 flex w-full items-center justify-center transition-all duration-300 ease-in-out',
+        isScrolled ? 'top-2 py-2' : 'bg-transparent py-4',
         className
       )}
       {...props}
     >
-      <div className="container mx-auto flex h-full items-center justify-between">
+      <div
+        className={cn(
+          'flex h-16 items-center justify-between bg-background/80 px-6 backdrop-blur-md transition-all duration-300 ease-in-out',
+          isScrolled
+            ? 'border-slate w-3/4 rounded-full border shadow-sm'
+            : 'w-full rounded-none'
+        )}
+      >
         <div className="text-lg font-bold">{title}</div>
         <nav className="flex space-x-4">
           <a href="#" className="hover:underline">
