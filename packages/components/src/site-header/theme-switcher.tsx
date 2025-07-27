@@ -20,13 +20,12 @@ const ThemeSwitcher = () => {
     }, 1);
   };
 
-  const sharedClass =
-    'rounded-md p-2 hover:bg-accent flex items-center justify-center';
   const iconClass = 'h-5 w-5';
 
   if (!mounted) {
     return (
-      <div className={sharedClass}>
+      <div className="flex items-center justify-center hover:bg-accent">
+        <div className={iconClass} />
         <div className={iconClass} />
       </div>
     );
