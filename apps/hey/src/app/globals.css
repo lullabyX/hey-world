@@ -30,6 +30,7 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --theme-transition-duration: 0.3s;
   }
 
   .dark {
@@ -70,4 +71,15 @@
     @apply bg-background text-foreground;
     font-family: Arial, Helvetica, sans-serif;
   }
+}
+
+html.theme-switching,
+html.theme-switching * {
+  transition:
+    color var(--theme-transition-duration) ease-in-out,
+    background-color var(--theme-transition-duration) ease-in-out,
+    border-color var(--theme-transition-duration) ease-in-out,
+    box-shadow var(--theme-transition-duration) ease-in-out,
+    fill var(--theme-transition-duration) ease-in-out,
+    stroke var(--theme-transition-duration) ease-in-out !important;
 }

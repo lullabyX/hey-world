@@ -87,7 +87,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <SiteHeader
-            title="hey"
+            title="Hey World!"
             titleHref="/"
             pages={[
               { name: 'Blog', href: '/blog' },

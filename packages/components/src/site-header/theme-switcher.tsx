@@ -10,6 +10,15 @@ const ThemeSwitcher = () => {
     setMounted(true);
   }, []);
 
+  const handleToggle = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    document.documentElement.classList.add('theme-switching');
+    setTheme(newTheme);
+    setTimeout(() => {
+      document.documentElement.classList.remove('theme-switching');
+    }, 300);
+  };
+
   const sharedClass =
     'rounded-md p-2 hover:bg-accent flex items-center justify-center';
   const iconClass = 'h-5 w-5';
@@ -23,10 +32,7 @@ const ThemeSwitcher = () => {
   }
 
   return (
-    <button
-      onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-      className={sharedClass}
-    >
+    <button onClick={handleToggle} className={sharedClass}>
       {theme === 'light' && <Sun className={iconClass} />}
       {theme === 'dark' && <Moon className={iconClass} />}
     </button>

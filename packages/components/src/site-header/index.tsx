@@ -56,17 +56,18 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
             : 'w-full max-w-full rounded-none border border-transparent'
         )}
       >
-        <Link
-          href={titleHref}
-          className="text-lg font-bold"
-          onClick={() => {
-            if (titleHref === pathname) {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-          }}
-        >
-          {title}
-        </Link>
+        <Button asChild variant="link" className="text-lg font-bold">
+          <Link
+            href={titleHref}
+            onClick={() => {
+              if (titleHref === pathname) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+          >
+            {title}
+          </Link>
+        </Button>
         <nav className="flex space-x-4">
           {pages?.map((page) => (
             <Button key={page.name} asChild variant="link">
