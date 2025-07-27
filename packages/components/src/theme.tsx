@@ -42,6 +42,10 @@ const ThemeScript = () => {
       // (explicit dark OR (follow system AND system is dark))
       const isDarkMode = isExplicitDark || (shouldFollowSystem && isSystemDark);
 
+      if (shouldFollowSystem) {
+        localStorage.theme = isSystemDark ? 'dark' : 'light';
+      }
+
       // Step 5: If dark mode, update the meta tag's content
       if (isDarkMode) {
         const metaTag = document.querySelector('meta[name="theme-color"]');
