@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import './globals.css';
+import '@hey-world/ui/src/globals.css';
 import SiteHeader from '@hey-world/components/src/site-header';
 import ThemeProvider from '@hey-world/components/src/theme-provider';
 
