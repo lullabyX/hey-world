@@ -9,6 +9,7 @@ const ThemeProvider = ({ children, ...props }: ThemeProviderProps) => {
       attribute="class"
       defaultTheme="system"
       enableSystem
+      themes={['light', 'dark']}
       value={{
         light: 'light',
         dark: 'dark',

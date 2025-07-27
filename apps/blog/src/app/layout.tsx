@@ -9,7 +9,7 @@ import {
 } from '@hey-world/components';
 
 export const metadata: Metadata = {
-  title: 'Hey World!',
+  title: 'Hey Blog!',
   description: 'Need to think about this',
 };
 
@@ -30,10 +30,10 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <SiteHeader
-            title="Hey World!"
+            title="Hey Blog!"
             titleHref="/"
             pages={[
-              { name: 'Blog', href: isDev ? 'http://localhost:3000' : '/blog' },
+              { name: 'Home', href: isDev ? 'http://localhost:3001' : '/' },
               { name: 'About', href: '/about' },
               { name: 'Contact', href: '/contact' },
             ]}
