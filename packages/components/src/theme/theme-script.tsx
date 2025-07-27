@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from 'next/font/google';
+import { getCookie, setCookie, getDomain } from '@hey-world/lib';
 
 type NextFont = {
   className: string;
@@ -23,52 +24,67 @@ export const META_THEME_COLORS = {
 };
 
 const ThemeScript = () => {
-  const themeScriptFunction = () => {
+  const scriptContent = `(function() {
+    ${getDomain.toString()}
+    ${getCookie.toString()}
+    ${setCookie.toString()}
+    const META_THEME_COLORS = ${JSON.stringify(META_THEME_COLORS)};
+
     try {
-      // Step 1: Check for explicit 'dark' preference in localStorage
-      const isExplicitDark = localStorage.theme === 'dark';
+      // Step 1: Get stored theme from cookie
+      const storedTheme = getCookie('theme');
 
       // Step 2: Check if we should follow system preferences
       // (no theme saved, or explicitly set to 'system')
-      const shouldFollowSystem =
-        !('theme' in localStorage) || localStorage.theme === 'system';
+      const shouldFollowSystem = !storedTheme || storedTheme === 'system';
 
       // Step 3: Detect system dark mode via media query
       const isSystemDark = window.matchMedia(
         '(prefers-color-scheme: dark)'
       ).matches;
 
-      // Step 4: Decide if dark mode is active
-      // (explicit dark OR (follow system AND system is dark))
-      const isDarkMode = isExplicitDark || (shouldFollowSystem && isSystemDark);
-
+      // Step 4: Resolve the theme
+      let resolvedTheme;
       if (shouldFollowSystem) {
-        localStorage.theme = isSystemDark ? 'dark' : 'light';
+        resolvedTheme = isSystemDark ? 'dark' : 'light';
+      } else {
+        resolvedTheme = storedTheme;
       }
 
-      // Step 5: If dark mode, update the meta tag's content
+      // Step 5: Sync to localStorage and cookie
+      localStorage.theme = resolvedTheme;
+      setCookie('theme', resolvedTheme, {
+        days: 365,
+        domain: getDomain(),
+      });
+
+      // Step 6: Decide if dark mode is active
+      const isDarkMode = resolvedTheme === 'dark';
+
+      // Step 7: Set document class
       if (isDarkMode) {
-        const metaTag = document.querySelector('meta[name="theme-color"]');
-        if (metaTag) {
-          metaTag.setAttribute('content', META_THEME_COLORS.dark);
-        }
+        document.documentElement.classList.add('dark');
       } else {
-        const metaTag = document.querySelector('meta[name="theme-color"]');
-        if (metaTag) {
-          metaTag.setAttribute('content', META_THEME_COLORS.light);
-        }
+        document.documentElement.classList.remove('dark');
+      }
+
+      // Step 8: Update meta tag
+      const metaTag = document.querySelector('meta[name="theme-color"]');
+      if (metaTag) {
+        metaTag.setAttribute(
+          'content',
+          isDarkMode ? META_THEME_COLORS.dark : META_THEME_COLORS.light
+        );
       }
     } catch (error) {
       console.error('Theme meta update failed:', error);
     }
-  };
+  })();`;
 
   return (
     <>
       <meta name="theme-color" content={META_THEME_COLORS.light} />
-      <script
-        dangerouslySetInnerHTML={{ __html: `(${themeScriptFunction})()` }}
-      />
+      <script dangerouslySetInnerHTML={{ __html: scriptContent }} />
     </>
   );
 };

@@ -4,6 +4,7 @@ import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@hey-world/ui';
+import { getDomain, setCookie } from '@hey-world/lib';
 
 const ThemeSwitcher = () => {
   const { theme, setTheme } = useTheme();
@@ -17,6 +18,9 @@ const ThemeSwitcher = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     document.documentElement.classList.add('theme-switching');
     setTheme(newTheme);
+
+    setCookie('theme', newTheme, { days: 365, domain: getDomain() });
+
     setTimeout(() => {
       document.documentElement.classList.remove('theme-switching');
     }, 1);
