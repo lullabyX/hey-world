@@ -69,7 +69,7 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
         className={cn(
           'relative flex h-12 items-center justify-between bg-background/80 px-4 transition-all duration-300 ease-in-out md:h-16 md:px-6',
           isScrolled && !isMenuOpen
-            ? 'border-slate w-80 max-w-7xl rounded-full border shadow-sm md:w-3/4'
+            ? 'border-slate w-80 max-w-7xl rounded-full border shadow-sm sm:w-3/4'
             : 'w-full max-w-full rounded-none border border-transparent'
         )}
       >
