@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { cn } from '@hey-world/lib';
 import ThemeSwitcher from './theme-switcher';
 import Link from 'next/link';
+import { Button } from '@hey-world/ui';
 
 interface SiteHeaderProps extends React.HTMLAttributes<HTMLElement> {
   title: string;
@@ -64,16 +65,18 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
         </Link>
         <nav className="flex space-x-4">
           {pages?.map((page) => (
-            <Link
-              href={page.href}
-              className="hover:underline"
-              key={page.name}
-              onClick={() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            >
-              {page.name}
-            </Link>
+            <Button key={page.name} asChild variant="link">
+              <Link
+                target="_self"
+                href={page.href}
+                className="link"
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              >
+                {page.name}
+              </Link>
+            </Button>
           ))}
         </nav>
         <ThemeSwitcher />
