@@ -139,8 +139,11 @@ importers:
 
   packages/ui:
     dependencies:
+      '@hey-world/lib':
+        specifier: workspace:*
+        version: link:../lib
       '@radix-ui/react-slot':
-        specifier: ^1.1.0
+        specifier: ^1.2.3
         version: 1.2.3(@types/react@19.0.8)(react@19.0.0)
       class-variance-authority:
         specifier: ^0.7.1
@@ -160,6 +163,10 @@ importers:
       tailwind-merge:
         specifier: ^3.0.1
         version: 3.0.1
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.0.8
 
 packages:
 

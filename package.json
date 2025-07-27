@@ -24,7 +24,10 @@
     "remove:lib": "pnpm remove $1 --filter @hey-world/lib",
     "add:components": "pnpm add $1 --filter @hey-world/components",
     "up:components": "pnpm up $1 --filter @hey-world/components",
-    "remove:components": "pnpm remove $1 --filter @hey-world/components"
+    "remove:components": "pnpm remove $1 --filter @hey-world/components",
+    "add:ui": "pnpm add $1 --filter @hey-world/ui $2",
+    "up:ui": "pnpm up $1 --filter @hey-world/ui",
+    "remove:ui": "pnpm remove $1 --filter @hey-world/ui"
   },
   "devDependencies": {
     "@types/node": "^20.17.17",

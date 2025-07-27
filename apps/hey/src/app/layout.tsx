@@ -51,7 +51,7 @@ const ThemeScript = () => {
       } else {
         const metaTag = document.querySelector('meta[name="theme-color"]');
         if (metaTag) {
-          metaTag.setAttribute('content', '${META_THEME_COLORS.light}');
+          metaTag.setAttribute('content', META_THEME_COLORS.light);
         }
       }
     } catch (error) {
@@ -79,10 +79,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="theme-color" content="#ffffff" />
         <ThemeScript />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased transition-all duration-300 ease-in-out`}
+        className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased`}
       >
         <ThemeProvider>
           <SiteHeader
