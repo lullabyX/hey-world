@@ -5,6 +5,7 @@ import { cn } from '@hey-world/lib';
 import ThemeSwitcher from './theme-switcher';
 import Link from 'next/link';
 import { Button } from '@hey-world/ui';
+import { usePathname } from 'next/navigation';
 
 interface SiteHeaderProps extends React.HTMLAttributes<HTMLElement> {
   title: string;
@@ -23,6 +24,7 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
   ...props
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setIsScrolled(window.scrollY > 10);
@@ -58,7 +60,9 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
           href={titleHref}
           className="text-lg font-bold"
           onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (titleHref === pathname) {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
           }}
         >
           {title}
@@ -67,11 +71,11 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
           {pages?.map((page) => (
             <Button key={page.name} asChild variant="link">
               <Link
-                target="_self"
                 href={page.href}
-                className="link"
                 onClick={() => {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  if (page.href === pathname) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
                 }}
               >
                 {page.name}
