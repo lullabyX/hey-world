@@ -6,6 +6,7 @@ import ThemeSwitcher from './theme-switcher';
 import Link from 'next/link';
 import { Button } from '@hey-world/ui';
 import { usePathname } from 'next/navigation';
+import { Github } from 'lucide-react';
 
 interface SiteHeaderProps extends React.HTMLAttributes<HTMLElement> {
   title: string;
@@ -84,7 +85,19 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
             </Button>
           ))}
         </nav>
-        <ThemeSwitcher />
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon" asChild>
+            <a
+              href="https://github.com/lullabyX/hey-world"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Github className="h-5 w-5" />
+              <span className="sr-only">GitHub</span>
+            </a>
+          </Button>
+          <ThemeSwitcher />
+        </div>
       </div>
     </header>
   );

@@ -1,6 +1,7 @@
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from '@hey-world/ui';
 
 const ThemeSwitcher = () => {
   const { theme, setTheme } = useTheme();
@@ -16,7 +17,7 @@ const ThemeSwitcher = () => {
     setTheme(newTheme);
     setTimeout(() => {
       document.documentElement.classList.remove('theme-switching');
-    }, 300);
+    }, 1);
   };
 
   const sharedClass =
@@ -32,10 +33,11 @@ const ThemeSwitcher = () => {
   }
 
   return (
-    <button onClick={handleToggle} className={sharedClass}>
+    <Button onClick={handleToggle} variant="ghost" size="icon">
       {theme === 'light' && <Sun className={iconClass} />}
       {theme === 'dark' && <Moon className={iconClass} />}
-    </button>
+      <span className="sr-only">Toggle Theme</span>
+    </Button>
   );
 };
 
