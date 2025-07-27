@@ -85,7 +85,15 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased transition-all duration-300 ease-in-out`}
       >
         <ThemeProvider>
-          <SiteHeader title="hey" />
+          <SiteHeader
+            title="hey"
+            titleHref="/"
+            pages={[
+              { name: 'Blog', href: '/blog' },
+              { name: 'About', href: '/about' },
+              { name: 'Contact', href: '/contact' },
+            ]}
+          />
           {children}
         </ThemeProvider>
       </body>

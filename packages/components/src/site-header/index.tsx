@@ -3,63 +3,78 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '@hey-world/lib';
 import ThemeSwitcher from './theme-switcher';
+import Link from 'next/link';
 
 interface SiteHeaderProps extends React.HTMLAttributes<HTMLElement> {
   title: string;
+  titleHref: string;
+  pages: {
+    name: string;
+    href: string;
+  }[];
 }
 
 const SiteHeader: React.FC<SiteHeaderProps> = ({
   title,
+  titleHref,
+  pages,
   className,
   ...props
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    setIsScrolled(window.scrollY > 10);
 
     const handleScroll = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        setIsScrolled(window.scrollY > 10);
-      }, 100);
+      setIsScrolled(window.scrollY > 10);
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      clearTimeout(timeoutId);
     };
   }, []);
 
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 flex w-full items-center justify-center transition-all duration-300 ease-in-out',
-        isScrolled ? 'top-2 py-2' : 'bg-transparent py-4',
+        'sticky top-0 z-50 flex w-full items-center justify-center bg-transparent transition-all duration-300 ease-in-out',
+        isScrolled ? 'top-2 py-2' : 'py-4',
         className
       )}
       {...props}
     >
       <div
         className={cn(
-          'flex h-16 items-center justify-between bg-background/80 px-6 backdrop-blur-md transition-all duration-300 ease-in-out',
+          'flex h-16 items-center justify-between bg-background/80 px-6 transition-all duration-300 ease-in-out',
           isScrolled
             ? 'border-slate w-3/4 rounded-full border shadow-sm'
-            : 'w-full rounded-none'
+            : 'w-full rounded-none border border-transparent'
         )}
       >
-        <div className="text-lg font-bold">{title}</div>
+        <Link
+          href={titleHref}
+          className="text-lg font-bold"
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        >
+          {title}
+        </Link>
         <nav className="flex space-x-4">
-          <a href="#" className="hover:underline">
-            Home
-          </a>
-          <a href="#" className="hover:underline">
-            About
-          </a>
-          <a href="#" className="hover:underline">
-            Contact
-          </a>
+          {pages?.map((page) => (
+            <Link
+              href={page.href}
+              className="hover:underline"
+              key={page.name}
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
+              {page.name}
+            </Link>
+          ))}
         </nav>
         <ThemeSwitcher />
       </div>
