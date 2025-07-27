@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { cn } from '@hey-world/lib';
 import ThemeSwitcher from './theme-switcher';
 import Link from 'next/link';
+import { Button } from '@hey-world/ui';
+import { usePathname } from 'next/navigation';
+import { Github } from 'lucide-react';
 
 interface SiteHeaderProps extends React.HTMLAttributes<HTMLElement> {
   title: string;
@@ -22,6 +25,7 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
   ...props
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setIsScrolled(window.scrollY > 10);
@@ -49,34 +53,51 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
         className={cn(
           'flex h-16 items-center justify-between bg-background/80 px-6 transition-all duration-300 ease-in-out',
           isScrolled
-            ? 'border-slate w-3/4 rounded-full border shadow-sm'
-            : 'w-full rounded-none border border-transparent'
+            ? 'border-slate w-3/4 max-w-7xl rounded-full border shadow-sm'
+            : 'w-full max-w-full rounded-none border border-transparent'
         )}
       >
-        <Link
-          href={titleHref}
-          className="text-lg font-bold"
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        >
-          {title}
-        </Link>
+        <Button asChild variant="link" className="text-lg font-bold">
+          <Link
+            href={titleHref}
+            onClick={() => {
+              if (titleHref === pathname) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+          >
+            {title}
+          </Link>
+        </Button>
         <nav className="flex space-x-4">
           {pages?.map((page) => (
-            <Link
-              href={page.href}
-              className="hover:underline"
-              key={page.name}
-              onClick={() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            >
-              {page.name}
-            </Link>
+            <Button key={page.name} asChild variant="link">
+              <Link
+                href={page.href}
+                onClick={() => {
+                  if (page.href === pathname) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+              >
+                {page.name}
+              </Link>
+            </Button>
           ))}
         </nav>
-        <ThemeSwitcher />
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon" asChild>
+            <a
+              href="https://github.com/lullabyX/hey-world"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Github className="h-5 w-5" />
+              <span className="sr-only">GitHub</span>
+            </a>
+          </Button>
+          <ThemeSwitcher />
+        </div>
       </div>
     </header>
   );
