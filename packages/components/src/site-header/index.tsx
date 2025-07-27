@@ -57,7 +57,11 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
             : 'w-full max-w-full rounded-none border border-transparent'
         )}
       >
-        <Button asChild variant="link" className="text-lg font-bold">
+        <Button
+          asChild
+          variant="link"
+          className="text-lg font-bold hover:no-underline"
+        >
           <Link
             href={titleHref}
             onClick={() => {
