@@ -16,8 +16,13 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "add:hey": "pnpm add $1 --filter @hey-world/hey",
     "up:hey": "pnpm up $1 --filter @hey-world/hey",
+    "remove:hey": "pnpm remove $1 --filter @hey-world/hey",
     "add:lib": "pnpm add $1 --filter @hey-world/lib",
-    "up:lib": "pnpm up $1 --filter @hey-world/lib"
+    "up:lib": "pnpm up $1 --filter @hey-world/lib",
+    "remove:lib": "pnpm remove $1 --filter @hey-world/lib",
+    "add:components": "pnpm add $1 --filter @hey-world/components",
+    "up:components": "pnpm up $1 --filter @hey-world/components",
+    "remove:components": "pnpm remove $1 --filter @hey-world/components"
   },
   "devDependencies": {
     "turbo": "latest",
