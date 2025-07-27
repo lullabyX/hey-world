@@ -99,6 +99,12 @@ importers:
 
   packages/components:
     dependencies:
+      '@hey-world/lib':
+        specifier: workspace:*
+        version: link:../lib
+      lucide-react:
+        specifier: ^0.475.0
+        version: 0.475.0(react@19.0.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0)

@@ -2,8 +2,8 @@
   "name": "@hey-world/lib",
   "private": true,
   "version": "0.0.0",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "dependencies": {
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.0.1"
