@@ -24,51 +24,37 @@ export const META_THEME_COLORS = {
 };
 
 const ThemeScript = () => {
+  const domainFn = getDomain.toString();
+  const cookieFn = getCookie.toString();
+  const setFn = setCookie.toString();
   const scriptContent = `(function() {
-    ${getDomain.toString()}
-    ${getCookie.toString()}
-    ${setCookie.toString()}
+    const getDomain = ${domainFn};
+    const getCookie = ${cookieFn};
+    const setCookie = ${setFn};
     const META_THEME_COLORS = ${JSON.stringify(META_THEME_COLORS)};
-
     try {
-      // Step 1: Get stored theme from cookie
       const storedTheme = getCookie('theme');
-
-      // Step 2: Check if we should follow system preferences
-      // (no theme saved, or explicitly set to 'system')
       const shouldFollowSystem = !storedTheme || storedTheme === 'system';
-
-      // Step 3: Detect system dark mode via media query
       const isSystemDark = window.matchMedia(
         '(prefers-color-scheme: dark)'
       ).matches;
-
-      // Step 4: Resolve the theme
       let resolvedTheme;
       if (shouldFollowSystem) {
         resolvedTheme = isSystemDark ? 'dark' : 'light';
       } else {
         resolvedTheme = storedTheme;
       }
-
-      // Step 5: Sync to localStorage and cookie
       localStorage.theme = resolvedTheme;
       setCookie('theme', resolvedTheme, {
         days: 365,
         domain: getDomain(),
       });
-
-      // Step 6: Decide if dark mode is active
       const isDarkMode = resolvedTheme === 'dark';
-
-      // Step 7: Set document class
       if (isDarkMode) {
         document.documentElement.classList.add('dark');
       } else {
         document.documentElement.classList.remove('dark');
       }
-
-      // Step 8: Update meta tag
       const metaTag = document.querySelector('meta[name="theme-color"]');
       if (metaTag) {
         metaTag.setAttribute(
@@ -80,7 +66,6 @@ const ThemeScript = () => {
       console.error('Theme meta update failed:', error);
     }
   })();`;
-
   return (
     <>
       <meta name="theme-color" content={META_THEME_COLORS.light} />
@@ -88,5 +73,4 @@ const ThemeScript = () => {
     </>
   );
 };
-
 export default ThemeScript;
