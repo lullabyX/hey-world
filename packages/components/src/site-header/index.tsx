@@ -29,10 +29,10 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
   const pathname = usePathname();
 
   useEffect(() => {
-    setIsScrolled(window.scrollY > 10);
+    setIsScrolled(window.scrollY > 1);
 
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      setIsScrolled(window.scrollY > 1);
     };
 
     window.addEventListener('scroll', handleScroll);
