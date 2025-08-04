@@ -67,10 +67,10 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
     >
       <div
         className={cn(
-          'relative flex h-12 items-center justify-between bg-background/80 px-4 transition-all duration-300 ease-in-out md:h-16 md:px-6',
+          'relative flex h-12 items-center justify-between border border-white/10 bg-background/20 px-4 shadow-lg backdrop-blur-xl transition-all duration-300 ease-in-out md:h-16 md:px-6',
           isScrolled && !isMenuOpen
-            ? 'border-slate w-80 max-w-7xl rounded-full border shadow-sm sm:w-3/4'
-            : 'w-full max-w-full rounded-none border border-transparent'
+            ? 'w-80 max-w-7xl rounded-full border-white/20 shadow-xl sm:w-3/4'
+            : 'w-full max-w-full rounded-none border-white/5'
         )}
       >
         <Button
