@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      // Alias for local files within the 'minecraft' app
+      "@/*": ["src/*"],
+      // Aliases for shared packages
+      "@ui/*": ["../../packages/ui/*"],
+      "@base/components/*": ["../../packages/components/*"],
+      "@lib/*": ["../../packages/lib/*"]
+    },
+    "allowJs": true,
+    "noEmit": true,
+    "incremental": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

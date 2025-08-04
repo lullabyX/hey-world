@@ -4,17 +4,18 @@ export default function Home() {
       <main className="row-start-2 flex flex-col items-center gap-8 sm:items-start">
         <div className="max-w-2xl rounded-lg bg-card p-6 text-center shadow-md sm:text-left">
           <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-            Hey, I&apos;m Rabbi
+            Welcome to Minecraft World! ⛏️
           </h1>
           <p className="mt-6 text-lg text-muted-foreground">
-            Lorem ipsum dolor sit amet, consectetur adipisicing elit. Laboriosam
-            quasi provident magnam sequi ut voluptatum? Laudantium incidunt,
-            voluptatem natus amet labore tenetur iusto, ab veniam cum cumque
-            deserunt minus aut.
+            Dive into the blocky universe of creativity and adventure! Build
+            magnificent structures, explore vast landscapes, and survive the
+            night. Whether you&apos;re a seasoned crafter or just starting your
+            journey, there&apos;s always something new to discover.
           </p>
           <p className="mt-4 text-lg text-muted-foreground">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam,
-            quos. Lorem ipsum dolor sit amet consectetur adipisicing elit.
+            From redstone contraptions to pixel art masterpieces, from peaceful
+            farming to thrilling adventures in the Nether - your imagination is
+            the only limit in this sandbox world.
           </p>
         </div>
       </main>

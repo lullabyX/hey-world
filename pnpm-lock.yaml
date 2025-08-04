@@ -164,6 +164,70 @@ importers:
         specifier: ^5
         version: 5.7.3
 
+  apps/minecraft:
+    dependencies:
+      '@hey-world/components':
+        specifier: workspace:*
+        version: link:../../packages/components
+      '@hey-world/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      lucide-react:
+        specifier: ^0.475.0
+        version: 0.475.0(react@19.0.0)
+      next:
+        specifier: 15.4.4
+        version: 15.4.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      tailwind-merge:
+        specifier: ^3.0.1
+        version: 3.0.1
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@3.4.17)
+    devDependencies:
+      '@eslint/eslintrc':
+        specifier: ^3
+        version: 3.3.1
+      '@types/node':
+        specifier: ^20
+        version: 20.17.17
+      '@types/react':
+        specifier: ^19
+        version: 19.0.8
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.0.3(@types/react@19.0.8)
+      autoprefixer:
+        specifier: ^10.4.21
+        version: 10.4.21(postcss@8.5.1)
+      eslint:
+        specifier: ^9.31.0
+        version: 9.31.0(jiti@1.21.7)
+      eslint-config-next:
+        specifier: 15.1.6
+        version: 15.1.6(eslint@9.31.0(jiti@1.21.7))(typescript@5.7.3)
+      postcss:
+        specifier: ^8
+        version: 8.5.1
+      tailwindcss:
+        specifier: ^3.4.1
+        version: 3.4.17
+      typescript:
+        specifier: ^5
+        version: 5.7.3
+
   packages/components:
     dependencies:
       '@hey-world/lib':
@@ -2382,7 +2446,7 @@ snapshots:
       '@typescript-eslint/types': 8.23.0
       '@typescript-eslint/typescript-estree': 8.23.0(typescript@5.7.3)
       '@typescript-eslint/visitor-keys': 8.23.0
-      debug: 4.4.0
+      debug: 4.4.1
       eslint: 9.31.0(jiti@1.21.7)
       typescript: 5.7.3
     transitivePeerDependencies:
@@ -2410,7 +2474,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.23.0
       '@typescript-eslint/visitor-keys': 8.23.0
-      debug: 4.4.0
+      debug: 4.4.1
       fast-glob: 3.3.3
       is-glob: 4.0.3
       minimatch: 9.0.5
@@ -2879,7 +2943,7 @@ snapshots:
   eslint-import-resolver-typescript@3.7.0(eslint-plugin-import@2.31.0)(eslint@9.31.0(jiti@1.21.7)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
-      debug: 4.4.0
+      debug: 4.4.1
       enhanced-resolve: 5.18.1
       eslint: 9.31.0(jiti@1.21.7)
       fast-glob: 3.3.3
