@@ -1,3 +1,5 @@
+import MinecraftSection from '@/components/section/minecraft';
+
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col font-[family-name:var(--font-geist-sans)]">
@@ -22,9 +24,7 @@ export default function Home() {
       </section>
 
       {/* Minecraft Game Section */}
-      <section className="flex-1 bg-card px-8 py-16">
-        
-      </section>
+      <MinecraftSection />
 
       {/* Footer */}
       <footer className="bg-muted px-8 py-12">
@@ -88,7 +88,7 @@ export default function Home() {
           </div>
 
           <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 Minecraft World. All rights reserved.</p>
+            <p>&copy; YOLO.</p>
           </div>
         </div>
       </footer>
