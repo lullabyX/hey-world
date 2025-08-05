@@ -60,17 +60,19 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
     <header
       className={cn(
         'sticky top-0 z-50 flex w-full items-center justify-center bg-transparent transition-all duration-300 ease-in-out',
-        isScrolled && !isMenuOpen ? 'top-2 py-2' : 'py-4',
+        isScrolled && !isMenuOpen
+          ? 'top-2 py-2'
+          : 'bg-white py-4 dark:bg-black',
         className
       )}
       {...props}
     >
       <div
         className={cn(
-          'relative flex h-12 items-center justify-between border border-white/10 bg-background/20 px-4 shadow-lg backdrop-blur-xl transition-all duration-300 ease-in-out md:h-16 md:px-6',
+          'relative flex h-12 items-center justify-between bg-background/20 px-4 backdrop-blur-lg transition-all duration-300 ease-in-out md:h-16 md:px-6',
           isScrolled && !isMenuOpen
-            ? 'w-80 max-w-7xl rounded-full border-white/20 shadow-xl sm:w-3/4'
-            : 'w-full max-w-full rounded-none border-white/5'
+            ? 'w-80 max-w-7xl rounded-full border border-black/5 shadow-lg dark:border-white/20 sm:w-3/4'
+            : 'w-full max-w-full rounded-none'
         )}
       >
         <Button
