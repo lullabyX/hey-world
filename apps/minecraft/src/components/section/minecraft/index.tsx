@@ -10,6 +10,8 @@ import { Canvas } from '@react-three/fiber';
 import { Leva, useControls } from 'leva';
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
+import { cn } from '@lib/src';
+import { useFullscreen } from '@hey-world/components';
 
 const InstancedWorld = ({
   width,
@@ -61,6 +63,10 @@ const InstancedWorld = ({
 };
 
 const MinecraftSection = () => {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const { Fullscreen, isFullscreen } = useFullscreen({
+    sectionRef,
+  });
   const { width, height } = useControls({
     width: {
       value: 64,
@@ -75,11 +81,18 @@ const MinecraftSection = () => {
       step: 2,
     },
   });
+
   return (
-    <section className="relative flex min-h-screen flex-1 bg-card">
-      <div className="absolute right-0 z-10">
+    <section
+      ref={sectionRef}
+      className={cn('relative flex', {
+        'fixed inset-0 z-50': isFullscreen,
+      })}
+    >
+      <div className="absolute right-0 top-0 z-10 flex gap-2 p-4">
         <Leva fill />
       </div>
+      <Fullscreen />
       <Canvas
         id="minecraft-main-canvas"
         style={{ aspectRatio: '16/9' }}
