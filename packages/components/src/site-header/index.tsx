@@ -60,7 +60,9 @@ const SiteHeader: React.FC<SiteHeaderProps> = ({
     <header
       className={cn(
         'sticky top-0 z-50 flex w-full items-center justify-center bg-transparent transition-all duration-300 ease-in-out',
-        isScrolled && !isMenuOpen ? 'top-2 py-2' : 'py-4',
+        isScrolled && !isMenuOpen
+          ? 'top-2 py-2'
+          : 'bg-white py-4 dark:bg-black',
         className
       )}
       {...props}
