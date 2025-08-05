@@ -9,3 +9,4 @@ export {
 } from './theme/theme-script';
 export { default as ThemeSwitcher } from './theme/theme-switcher';
 export { default as ThemeProvider } from './theme/theme-provider';
+export { default as useFullscreen } from './hooks/useFullscreen';
