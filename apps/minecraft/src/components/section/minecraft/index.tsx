@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  GizmoHelper,
-  GizmoViewport,
-  OrbitControls,
-  Html,
-} from '@react-three/drei';
+import { GizmoHelper, GizmoViewport, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { Leva, useControls } from 'leva';
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
