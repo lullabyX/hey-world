@@ -6,15 +6,9 @@ import {
   OrbitControls,
   Stats,
 } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Leva, useControls } from 'leva';
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
@@ -24,7 +18,7 @@ type BlockType = 'empty' | 'grass';
 
 type Block = {
   type: BlockType;
-  instanceId: number;
+  instanceId: number | null;
   color?: string;
 };
 
@@ -39,7 +33,9 @@ type EmptyBlock = Block & {
 
 const World = ({ width, height }: { width: number; height: number }) => {
   const meshRef = useRef<InstancedMesh>(null);
-  const { scale, magnitude, offset } = useControls({
+  const terrainDataRef = useRef<Block[][][]>([]);
+
+  const { scale, magnitude, offset } = useControls('Terrain', {
     scale: {
       value: 30,
       min: 10,
@@ -63,34 +59,39 @@ const World = ({ width, height }: { width: number; height: number }) => {
   const halfSize = Math.floor(width / 2);
   const totalSize = width * width * height;
 
-  const terrainData = useMemo(() => {
-    const data: Block[][][] = [];
+  const initializeTerrain = ({
+    width,
+    height,
+  }: {
+    width: number;
+    height: number;
+  }) => {
+    terrainDataRef.current = [];
     for (let x = 0; x < width; x++) {
       const slice: Block[][] = [];
       for (let y = 0; y < height; y++) {
         const row: Block[] = [];
         for (let z = 0; z < width; z++) {
-          row.push({ type: 'empty', instanceId: 0 });
+          row.push({ type: 'empty', instanceId: null });
         }
         slice.push(row);
       }
-      data.push(slice);
+      terrainDataRef.current.push(slice);
     }
-    return data;
-  }, [height, width]);
+  };
 
   const getBlockAt = (x: number, y: number, z: number) => {
     if (!isBound(x, y, z)) {
       return null;
     }
-    return terrainData[x]![y]![z]!;
+    return terrainDataRef.current[x]![y]![z]!;
   };
 
   const setBlockTypeAt = (x: number, y: number, z: number, type: BlockType) => {
     if (!isBound(x, y, z)) {
       return;
     }
-    terrainData[x]![y]![z]!.type = type;
+    terrainDataRef.current[x]![y]![z]!.type = type;
   };
 
   const setBlockInstanceIdAt = (
@@ -102,61 +103,65 @@ const World = ({ width, height }: { width: number; height: number }) => {
     if (!isBound(x, y, z)) {
       return;
     }
-    terrainData[x]![y]![z]!.instanceId = instanceId;
+    terrainDataRef.current[x]![y]![z]!.instanceId = instanceId;
   };
 
   const isBound = (x: number, y: number, z: number) => {
-    return (
-      x >= 0 &&
-      x < width &&
-      y >= 0 &&
-      y < height &&
-      z >= 0 &&
-      z < width &&
-      terrainData[x]?.[y]?.[z] !== undefined
-    );
+    return x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < width;
   };
 
-  const generateTerrain = () => {
+  const generateTerrain = ({
+    scale,
+    magnitude,
+    offset,
+  }: {
+    scale: number;
+    magnitude: number;
+    offset: number;
+  }) => {
     const simplexNoise = new SimplexNoise();
     for (let x = 0; x < width; x++) {
       for (let z = 0; z < width; z++) {
         const value = simplexNoise.noise(x / scale, z / scale);
         const scaledValue = value * magnitude + offset;
 
-        const generatedHeight = Math.floor(
-          Math.max(0, Math.min(height - 1, height * scaledValue))
-        );
+        let _height = Math.floor(height * scaledValue);
 
-        for (let y = 0; y <= generatedHeight; y++) {
-          setBlockTypeAt(x, y, z, 'grass');
+        _height = Math.max(0, Math.min(height - 1, _height));
+
+        for (let y = 0; y < height; y++) {
+          if (y <= _height) {
+            setBlockTypeAt(x, y, z, 'grass');
+          } else {
+            setBlockTypeAt(x, y, z, 'empty');
+          }
         }
       }
     }
   };
 
-  generateTerrain();
-
-  useLayoutEffect(() => {
+  const generateMesh = () => {
     if (!meshRef.current) {
       return;
     }
 
-    let count = 0;
+    meshRef.current.count = 0;
+    const matrix = new Matrix4();
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         for (let z = 0; z < width; z++) {
           const block = getBlockAt(x, y, z);
           if (block && block.type !== 'empty') {
-            const matrix = new Matrix4();
             // Center the world around origin
             matrix.setPosition(x - halfSize + 0.5, y + 0.5, z - halfSize + 0.5);
-            setBlockInstanceIdAt(x, y, z, count);
-            meshRef.current.setMatrixAt(count, matrix);
+
+            const instanceId = meshRef.current.count;
+            setBlockInstanceIdAt(x, y, z, instanceId);
+            meshRef.current.setMatrixAt(instanceId, matrix);
             if (block.color) {
-              meshRef.current.setColorAt(count, new Color(block.color));
+              meshRef.current.setColorAt(instanceId, new Color(block.color));
             }
-            count++;
+            meshRef.current.count++;
           }
         }
       }
@@ -166,7 +171,16 @@ const World = ({ width, height }: { width: number; height: number }) => {
     if (meshRef.current.instanceColor) {
       meshRef.current.instanceColor.needsUpdate = true;
     }
-  }, [terrainData]);
+  };
+
+  useMemo(() => {
+    initializeTerrain({ width, height });
+    generateTerrain({ scale, magnitude, offset });
+  }, [width, height, scale, magnitude, offset]);
+
+  useFrame(() => {
+    generateMesh();
+  });
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, totalSize]}>
@@ -181,7 +195,7 @@ const MinecraftSection = () => {
   const { Fullscreen, isFullscreen } = useFullscreen({
     sectionRef,
   });
-  const { width, height } = useControls({
+  const { width, height } = useControls('World', {
     width: {
       value: 64,
       min: 16,
@@ -203,8 +217,11 @@ const MinecraftSection = () => {
         'fixed inset-0 z-50': isFullscreen,
       })}
     >
-      <div className="absolute right-0 top-0 z-10 flex gap-2 p-4">
-        <Leva fill />
+      <div
+        className="absolute right-0 top-0 z-10 p-4"
+        style={{ isolation: 'isolate' }}
+      >
+        <Leva collapsed={false} oneLineLabels={false} fill />
       </div>
       <Fullscreen />
       <Canvas
