@@ -14,21 +14,70 @@ import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
 
-type BlockType = 'empty' | 'grass';
+// Define block configurations for reusability
+const BLOCK_CONFIGS = {
+  empty: {
+    type: 'empty' as const,
+  },
+  grass: {
+    type: 'grass' as const,
+    color: '#4ade80',
+  },
+  dirt: {
+    type: 'dirt' as const,
+    color: '#92400e',
+  },
+  stone: {
+    type: 'stone' as const,
+    color: '#6b7280',
+  },
+  wood: {
+    type: 'wood' as const,
+    color: '#92400e',
+  },
+  leaves: {
+    type: 'leaves' as const,
+    color: '#16a34a',
+  },
+  sand: {
+    type: 'sand' as const,
+    color: '#fbbf24',
+  },
+  water: {
+    type: 'water' as const,
+    color: '#3b82f6',
+    transparent: true,
+  },
+  // Add as many blocks as you want here!
+} as const;
 
-type Block = {
-  type: BlockType;
+// Base properties all blocks share
+type BaseBlock = {
   instanceId: number | null;
-  color?: string;
 };
 
-type GrassBlock = Block & {
-  type: 'grass';
-  color: '#006d00';
-};
+// Automatically generate block types from config
+type BlockConfig = typeof BLOCK_CONFIGS;
+type BlockType = keyof BlockConfig;
 
-type EmptyBlock = Block & {
-  type: 'empty';
+// Generate union of all possible block shapes
+type Block = {
+  [K in BlockType]: BaseBlock & BlockConfig[K];
+}[BlockType];
+
+// Helper type to get a specific block (if needed)
+export type BlockOfType<T extends BlockType> = BaseBlock & BlockConfig[T];
+
+// Factory function remains simple
+const createBlock = (
+  type: BlockType,
+  instanceId: number | null = null
+): Block => {
+  const config = BLOCK_CONFIGS[type];
+  return {
+    ...config,
+    instanceId,
+  } as Block;
 };
 
 const World = ({ width, height }: { width: number; height: number }) => {
@@ -91,7 +140,11 @@ const World = ({ width, height }: { width: number; height: number }) => {
     if (!isBound(x, y, z)) {
       return;
     }
-    terrainDataRef.current[x]![y]![z]!.type = type;
+    const existingBlock = getBlockAt(x, y, z);
+    terrainDataRef.current[x]![y]![z] = createBlock(
+      type,
+      existingBlock?.instanceId
+    );
   };
 
   const setBlockInstanceIdAt = (
