@@ -13,72 +13,7 @@ import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
-
-// Define block configurations for reusability
-const BLOCK_CONFIGS = {
-  empty: {
-    type: 'empty' as const,
-  },
-  grass: {
-    type: 'grass' as const,
-    color: '#4ade80',
-  },
-  dirt: {
-    type: 'dirt' as const,
-    color: '#92400e',
-  },
-  stone: {
-    type: 'stone' as const,
-    color: '#6b7280',
-  },
-  wood: {
-    type: 'wood' as const,
-    color: '#92400e',
-  },
-  leaves: {
-    type: 'leaves' as const,
-    color: '#16a34a',
-  },
-  sand: {
-    type: 'sand' as const,
-    color: '#fbbf24',
-  },
-  water: {
-    type: 'water' as const,
-    color: '#3b82f6',
-    transparent: true,
-  },
-  // Add as many blocks as you want here!
-} as const;
-
-// Base properties all blocks share
-type BaseBlock = {
-  instanceId: number | null;
-};
-
-// Automatically generate block types from config
-type BlockConfig = typeof BLOCK_CONFIGS;
-type BlockType = keyof BlockConfig;
-
-// Generate union of all possible block shapes
-type Block = {
-  [K in BlockType]: BaseBlock & BlockConfig[K];
-}[BlockType];
-
-// Helper type to get a specific block (if needed)
-export type BlockOfType<T extends BlockType> = BaseBlock & BlockConfig[T];
-
-// Factory function remains simple
-const createBlock = (
-  type: BlockType,
-  instanceId: number | null = null
-): Block => {
-  const config = BLOCK_CONFIGS[type];
-  return {
-    ...config,
-    instanceId,
-  } as Block;
-};
+import { Block, BlockType, createBlock } from '@/app/helpers/block';
 
 const World = ({ width, height }: { width: number; height: number }) => {
   const meshRef = useRef<InstancedMesh>(null);
@@ -298,9 +233,9 @@ const MinecraftSection = () => {
           <GizmoViewport />
         </GizmoHelper>
         <World width={width} height={height} />
-        <directionalLight position={[1, 1, 1]} />
-        <directionalLight position={[-1, 1, -0.5]} />
-        <ambientLight intensity={0.5} />
+        <directionalLight position={[1, 1, 1]} intensity={0.8} />
+        <directionalLight position={[-1, 1, -0.5]} intensity={0.4} />
+        <ambientLight intensity={0.2} />
         <OrbitControls target={[0, 0, 0]} />
         <Stats />
       </Canvas>
