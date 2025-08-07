@@ -5,10 +5,11 @@ import {
   GizmoViewport,
   OrbitControls,
   Stats,
+  Html,
 } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { Leva, useControls } from 'leva';
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
@@ -217,6 +218,42 @@ const World = ({ width, height }: { width: number; height: number }) => {
   );
 };
 
+// Camera position monitor component
+const CameraMonitor = () => {
+  const { camera } = useThree();
+  const [position, setPosition] = useState({ x: 0, y: 0, z: 0 });
+
+  useFrame(() => {
+    // Update position every 10 frames to reduce overhead
+    if (Math.random() < 0.1) {
+      setPosition({
+        x: Math.round(camera.position.x * 10) / 10,
+        y: Math.round(camera.position.y * 10) / 10,
+        z: Math.round(camera.position.z * 10) / 10,
+      });
+    }
+  });
+
+  return (
+    <Html
+      position={[0, 20, 0]}
+      center
+      style={{
+        background: 'rgba(0, 0, 0, 0.8)',
+        color: 'white',
+        padding: '4px 8px',
+        borderRadius: '4px',
+        fontSize: '12px',
+        fontFamily: 'monospace',
+        whiteSpace: 'nowrap',
+        userSelect: 'none',
+      }}
+    >
+      Camera: X:{position.x} Y:{position.y} Z:{position.z}
+    </Html>
+  );
+};
+
 const MinecraftSection = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const { Fullscreen, isFullscreen } = useFullscreen({
@@ -246,7 +283,7 @@ const MinecraftSection = () => {
     >
       <div
         className="absolute right-0 top-0 z-10 p-4"
-        // style={{ isolation: 'isolate' }}
+        style={{ isolation: 'isolate' }}
       >
         <Leva collapsed={false} oneLineLabels={false} fill hideCopyButton />
       </div>
@@ -259,11 +296,7 @@ const MinecraftSection = () => {
           fov: 75,
           near: 0.1,
           far: 1000,
-          position: [
-            width * 0.7, // X: 70% of world width
-            Math.max(height + 15, 25), // Y: Height + buffer, minimum 25
-            width * 0.7,
-          ],
+          position: [width * 0.15, height + 10, -width * 0.8],
         }}
         scene={{ background: new Color('#80a0e0') }}
       >
@@ -277,6 +310,7 @@ const MinecraftSection = () => {
         <ambientLight intensity={0.2} />
         <OrbitControls target={[0, 0, 0]} />
         <Stats />
+        <CameraMonitor />
       </Canvas>
     </section>
   );
