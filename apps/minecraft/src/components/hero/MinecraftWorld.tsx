@@ -1,24 +1,26 @@
 'use client';
 
-import {
-  GizmoHelper,
-  GizmoViewport,
-  OrbitControls,
-  Stats,
-} from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Leva, useControls } from 'leva';
 import React, { useLayoutEffect, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
-import { useFullscreen } from '@hey-world/components';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
 import { Block } from '@/app/lib/block';
 import { useWorld } from '@/app/lib/world';
-import CameraMonitor from '@/components/helpers/CameraMonitor';
-import LevaControl from '@/components/helpers/LevaControl';
 
-const World = ({ width, height }: { width: number; height: number }) => {
+const World = ({
+  width,
+  height,
+  scale,
+  magnitude,
+  offset,
+}: {
+  width: number;
+  height: number;
+  scale: number;
+  magnitude: number;
+  offset: number;
+}) => {
   const halfSize = Math.floor(width / 2);
   const totalSize = width * width * height;
 
@@ -30,27 +32,6 @@ const World = ({ width, height }: { width: number; height: number }) => {
     isBlockVisible,
     setBlockInstanceIdAt,
   } = useWorld(width, height);
-
-  const { scale, magnitude, offset } = useControls('Terrain', {
-    scale: {
-      value: 30,
-      min: 10,
-      max: 100,
-      step: 1,
-    },
-    magnitude: {
-      value: 0.5,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-    offset: {
-      value: 0.2,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-  });
 
   const initializeTerrain = ({
     width,
@@ -147,6 +128,16 @@ const World = ({ width, height }: { width: number; height: number }) => {
     generateMesh();
   }, [width, height, scale, magnitude, offset]);
 
+  // Use delta for frame-rate independent rotation
+  // rotationSpeed is in radians per second
+  const rotationSpeed = 0.1; // Adjust this value to control speed
+
+  useFrame((_state, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y -= rotationSpeed * delta;
+    }
+  });
+
   return (
     <instancedMesh
       ref={meshRef}
@@ -159,35 +150,27 @@ const World = ({ width, height }: { width: number; height: number }) => {
   );
 };
 
-const MinecraftSection = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const { Fullscreen, isFullscreen } = useFullscreen({
-    sectionRef,
-  });
-  const { width, height } = useControls('World', {
-    width: {
-      value: 64,
-      min: 16,
-      max: 128,
-      step: 2,
-    },
-    height: {
-      value: 16,
-      min: 4,
-      max: 32,
-      step: 2,
-    },
-  });
+const MinecraftWorld = ({
+  width,
+  height,
+  className,
+  scale,
+  magnitude,
+  offset,
+  ...rest
+}: {
+  width: number;
+  height: number;
+  scale: number;
+  magnitude: number;
+  offset: number;
+} & React.HTMLAttributes<HTMLDivElement>) => {
+  const worldRef = useRef<HTMLDivElement>(null);
 
   return (
-    <section
-      ref={sectionRef}
-      className={cn('relative flex', {
-        'fixed inset-0 z-50': isFullscreen,
-      })}
-    >
+    <div ref={worldRef} className={cn('relative flex', className)} {...rest}>
       <Canvas
-        id="minecraft-main-canvas"
+        id="minecraft-world-hero-canvas"
         style={{ aspectRatio: '16/9' }}
         gl={{ antialias: true }}
         camera={{
@@ -196,24 +179,20 @@ const MinecraftSection = () => {
           far: 1000,
           position: [width * 0.15, height + 10, -width * 0.8],
         }}
-        scene={{ background: new Color('#80a0e0') }}
       >
-        <gridHelper args={[128, 128]} />
-        <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
-          <GizmoViewport />
-        </GizmoHelper>
-        <World width={width} height={height} />
+        <World
+          width={width}
+          height={height}
+          scale={scale}
+          magnitude={magnitude}
+          offset={offset}
+        />
         <directionalLight position={[1, 1, 1]} intensity={0.8} />
         <directionalLight position={[-1, 1, -0.5]} intensity={0.4} />
         <ambientLight intensity={0.2} />
-        <OrbitControls target={[0, 0, 0]} />
-        <Stats />
-        <CameraMonitor />
       </Canvas>
-      <Fullscreen />
-      <LevaControl />
-    </section>
+    </div>
   );
 };
 
-export default MinecraftSection;
+export default MinecraftWorld;
