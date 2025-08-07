@@ -17,6 +17,7 @@ import { Block } from '@/app/lib/block';
 import { useWorld } from '@/app/lib/world';
 import CameraMonitor from '@/components/helpers/CameraMonitor';
 import LevaControl from '@/components/helpers/LevaControl';
+import { RandomNumberGenerator } from '@/app/helpers/random-number-generator';
 
 const World = ({ width, height }: { width: number; height: number }) => {
   const halfSize = Math.floor(width / 2);
@@ -31,10 +32,10 @@ const World = ({ width, height }: { width: number; height: number }) => {
     setBlockInstanceIdAt,
   } = useWorld(width, height);
 
-  const { scale, magnitude, offset } = useControls('Terrain', {
+  const { scale, magnitude, offset, seed } = useControls('Terrain', {
     scale: {
       value: 30,
-      min: 10,
+      min: 20,
       max: 100,
       step: 1,
     },
@@ -49,6 +50,12 @@ const World = ({ width, height }: { width: number; height: number }) => {
       min: 0,
       max: 1,
       step: 0.01,
+    },
+    seed: {
+      value: 123456789,
+      min: 0,
+      max: 1000000000,
+      step: 1,
     },
   });
 
@@ -77,12 +84,15 @@ const World = ({ width, height }: { width: number; height: number }) => {
     scale,
     magnitude,
     offset,
+    seed,
   }: {
     scale: number;
     magnitude: number;
     offset: number;
+    seed: number;
   }) => {
-    const simplexNoise = new SimplexNoise();
+    const randomNumberGenerator = new RandomNumberGenerator(seed);
+    const simplexNoise = new SimplexNoise(randomNumberGenerator);
     for (let x = 0; x < width; x++) {
       for (let z = 0; z < width; z++) {
         const value = simplexNoise.noise(x / scale, z / scale);
@@ -143,9 +153,9 @@ const World = ({ width, height }: { width: number; height: number }) => {
   // Initialize terrain and generate mesh when parameters change
   useLayoutEffect(() => {
     initializeTerrain({ width, height });
-    generateTerrain({ scale, magnitude, offset });
+    generateTerrain({ scale, magnitude, offset, seed });
     generateMesh();
-  }, [width, height, scale, magnitude, offset]);
+  }, [width, height, scale, magnitude, offset, seed]);
 
   return (
     <instancedMesh
