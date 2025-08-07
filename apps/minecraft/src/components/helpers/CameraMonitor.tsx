@@ -4,9 +4,6 @@ import { useState } from 'react';
 
 // Camera position monitor component
 const CameraMonitor = ({ hidden = false }: { hidden?: boolean }) => {
-  if (hidden) {
-    return null;
-  }
   const { camera } = useThree();
   const [position, setPosition] = useState({ x: 0, y: 0, z: 0 });
 
@@ -20,6 +17,10 @@ const CameraMonitor = ({ hidden = false }: { hidden?: boolean }) => {
       });
     }
   });
+
+  if (hidden) {
+    return null;
+  }
 
   return (
     <Html

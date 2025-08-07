@@ -6,8 +6,8 @@ import {
   OrbitControls,
   Stats,
 } from '@react-three/drei';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Leva, useControls } from 'leva';
+import { Canvas } from '@react-three/fiber';
+import { useControls } from 'leva';
 import React, { useLayoutEffect, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
