@@ -98,6 +98,39 @@ const World = ({ width, height }: { width: number; height: number }) => {
     return x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < width;
   };
 
+  const isBlockVisible = (x: number, y: number, z: number) => {
+    // Check all six adjacent blocks (up, down, left, right, front, back)
+    const adjacentPositions = [
+      { dx: 0, dy: 1, dz: 0 }, // up
+      { dx: 0, dy: -1, dz: 0 }, // down
+      { dx: 1, dy: 0, dz: 0 }, // right
+      { dx: -1, dy: 0, dz: 0 }, // left
+      { dx: 0, dy: 0, dz: 1 }, // front
+      { dx: 0, dy: 0, dz: -1 }, // back
+    ];
+
+    // A block is visible if at least one adjacent position is empty or out of bounds
+    for (const { dx, dy, dz } of adjacentPositions) {
+      const adjacentX = x + dx;
+      const adjacentY = y + dy;
+      const adjacentZ = z + dz;
+
+      // If adjacent position is out of bounds, the face is exposed (visible)
+      if (!isBound(adjacentX, adjacentY, adjacentZ)) {
+        return true;
+      }
+
+      // If adjacent block is empty, the face is visible
+      const adjacentBlock = getBlockAt(adjacentX, adjacentY, adjacentZ);
+      if (adjacentBlock?.type === 'empty') {
+        return true;
+      }
+    }
+
+    // All adjacent positions have solid blocks, so this block is not visible
+    return false;
+  };
+
   const generateTerrain = ({
     scale,
     magnitude,
@@ -118,8 +151,10 @@ const World = ({ width, height }: { width: number; height: number }) => {
         _height = Math.max(0, Math.min(height - 1, _height));
 
         for (let y = 0; y < height; y++) {
-          if (y <= _height) {
+          if (y === _height) {
             setBlockTypeAt(x, y, z, 'grass');
+          } else if (y < _height) {
+            setBlockTypeAt(x, y, z, 'dirt');
           } else {
             setBlockTypeAt(x, y, z, 'empty');
           }
@@ -139,7 +174,9 @@ const World = ({ width, height }: { width: number; height: number }) => {
       for (let y = 0; y < height; y++) {
         for (let z = 0; z < width; z++) {
           const block = getBlockAt(x, y, z);
-          if (block && block.type !== 'empty') {
+          const notEmptyBlock = block && block.type !== 'empty';
+          const _isBlockVisible = isBlockVisible(x, y, z);
+          if (notEmptyBlock && _isBlockVisible) {
             // Center the world around origin
             matrix.setPosition(x - halfSize + 0.5, y + 0.5, z - halfSize + 0.5);
 
@@ -207,9 +244,9 @@ const MinecraftSection = () => {
     >
       <div
         className="absolute right-0 top-0 z-10 p-4"
-        style={{ isolation: 'isolate' }}
+        // style={{ isolation: 'isolate' }}
       >
-        <Leva collapsed={false} oneLineLabels={false} fill />
+        <Leva collapsed={false} oneLineLabels={false} fill hideCopyButton />
       </div>
       <Fullscreen />
       <Canvas
