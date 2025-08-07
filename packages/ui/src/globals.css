@@ -83,3 +83,22 @@ html.theme-switching * {
     fill var(--theme-transition-duration) ease-in-out,
     stroke var(--theme-transition-duration) ease-in-out !important;
 }
+
+/* Leva Control Panel Fixes */
+/* Fix the initial render height issue without breaking collapse animation */
+/* Only target divs with the specific height that causes the background issue */
+div[class*='leva-c-'][style='height: 87px;'],
+div[class*='leva-c-'][style='height: 91px;'] {
+  height: auto !important;
+  min-height: 87px;
+}
+
+/* Ensure folder content areas have proper background */
+[id*='leva__root'] div[class*='leva-c-'] {
+  background-color: transparent;
+}
+
+/* Set background only on the main content containers */
+[id*='leva__root'] > div > div {
+  background-color: var(--leva-colors-elevation1, rgb(41, 45, 62));
+}
