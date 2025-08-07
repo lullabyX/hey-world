@@ -219,7 +219,10 @@ const World = ({ width, height }: { width: number; height: number }) => {
 };
 
 // Camera position monitor component
-const CameraMonitor = () => {
+const CameraMonitor = ({ hidden = false }: { hidden?: boolean }) => {
+  if (hidden) {
+    return null;
+  }
   const { camera } = useThree();
   const [position, setPosition] = useState({ x: 0, y: 0, z: 0 });
 
