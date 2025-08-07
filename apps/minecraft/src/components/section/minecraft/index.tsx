@@ -6,9 +6,9 @@ import {
   OrbitControls,
   Stats,
 } from '@react-three/drei';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { Leva, useControls } from 'leva';
-import React, { useMemo, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
@@ -198,19 +198,21 @@ const World = ({ width, height }: { width: number; height: number }) => {
     }
   };
 
-  useMemo(() => {
+  // Initialize terrain and generate mesh when parameters change
+  useLayoutEffect(() => {
     initializeTerrain({ width, height });
     generateTerrain({ scale, magnitude, offset });
+    generateMesh();
   }, [width, height, scale, magnitude, offset]);
 
-  useFrame(() => {
-    generateMesh();
-  });
-
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, totalSize]}>
-      <boxGeometry args={[1, 1, 1]} />
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, totalSize]}
+      frustumCulled={false} // Disable per-instance culling for better performance
+    >
       <meshLambertMaterial />
+      <boxGeometry args={[1, 1, 1]} />
     </instancedMesh>
   );
 };
