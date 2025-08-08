@@ -13,11 +13,11 @@ import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
-import { Block } from '@/app/lib/block';
-import { useWorld } from '@/app/lib/world';
+import { Block } from '@/lib/block';
+import { useWorld } from '@/lib/world';
 import CameraMonitor from '@/components/helpers/CameraMonitor';
 import LevaControl from '@/components/helpers/LevaControl';
-import { RandomNumberGenerator } from '@/app/helpers/random-number-generator';
+import { RandomNumberGenerator } from '@/helpers/random-number-generator';
 
 const World = ({ width, height }: { width: number; height: number }) => {
   const halfSize = Math.floor(width / 2);

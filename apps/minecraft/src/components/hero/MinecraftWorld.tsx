@@ -5,8 +5,8 @@ import React, { useLayoutEffect, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
-import { Block } from '@/app/lib/block';
-import { useWorld } from '@/app/lib/world';
+import { Block } from '@/lib/block';
+import { useWorld } from '@/lib/world';
 
 const World = ({
   width,
