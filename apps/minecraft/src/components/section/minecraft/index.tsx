@@ -100,7 +100,7 @@ const World = ({ width, height }: { width: number; height: number }) => {
           );
           return acc;
         },
-        {} as Record<string, any>
+        {} as Record<string, ReturnType<typeof folder>>
       ),
     [resources]
   );
