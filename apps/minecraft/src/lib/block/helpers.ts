@@ -10,5 +10,6 @@ export const createBlock = (
   return {
     ...config,
     instanceId,
+    isResource: Boolean((config as any).isResource),
   } as Block;
 };
