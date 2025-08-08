@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { Block, BlockType, createBlock } from '@/app/lib/block';
+import { Block, BlockType, createBlock } from '@/lib/block';
 
 export const useWorld = (width: number, height: number) => {
   const terrainDataRef = useRef<Block[][][]>([]);

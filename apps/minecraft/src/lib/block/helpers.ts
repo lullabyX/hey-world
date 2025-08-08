@@ -1,5 +1,5 @@
 import { BLOCK_CONFIGS } from './config';
-import { Block, BlockType } from './types';
+import { Block, BlockDefinition, BlockType } from './types';
 
 // Factory function remains simple
 export const createBlock = (
@@ -10,5 +10,6 @@ export const createBlock = (
   return {
     ...config,
     instanceId,
+    isResource: Boolean((config as BlockDefinition)?.isResource),
   } as Block;
 };

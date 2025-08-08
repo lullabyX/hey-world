@@ -7,17 +7,17 @@ import {
   Stats,
 } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useControls } from 'leva';
-import React, { useLayoutEffect, useRef } from 'react';
+import { folder, useControls } from 'leva';
+import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
-import { Block } from '@/app/lib/block';
-import { useWorld } from '@/app/lib/world';
+import { Block, createBlock, getResourceEntries } from '@/lib/block';
+import { useWorld } from '@/lib/world';
 import CameraMonitor from '@/components/helpers/CameraMonitor';
 import LevaControl from '@/components/helpers/LevaControl';
-import { RandomNumberGenerator } from '@/app/helpers/random-number-generator';
+import { RandomNumberGenerator } from '@/helpers/random-number-generator';
 
 const World = ({ width, height }: { width: number; height: number }) => {
   const halfSize = Math.floor(width / 2);
@@ -59,6 +59,56 @@ const World = ({ width, height }: { width: number; height: number }) => {
     },
   });
 
+  const resources = useMemo(() => getResourceEntries(), []);
+  const resourceControlsSchema = useMemo(
+    () =>
+      resources.reduce(
+        (acc, [resourceType, def]) => {
+          const scale = def.resource.scale;
+          acc[resourceType] = folder(
+            {
+              [`${resourceType}::scarcity`]: {
+                label: 'scarcity',
+                value: def.resource.scarcity,
+                min: 0,
+                max: 1,
+                step: 0.01,
+              },
+              [`${resourceType}::scaleX`]: {
+                label: 'scaleX',
+                value: scale.x,
+                min: 1,
+                max: 128,
+                step: 1,
+              },
+              [`${resourceType}::scaleY`]: {
+                label: 'scaleY',
+                value: scale.y,
+                min: 1,
+                max: 128,
+                step: 1,
+              },
+              [`${resourceType}::scaleZ`]: {
+                label: 'scaleZ',
+                value: scale.z,
+                min: 1,
+                max: 128,
+                step: 1,
+              },
+            },
+            { collapsed: true }
+          );
+          return acc;
+        },
+        {} as Record<string, unknown>
+      ),
+    [resources]
+  );
+  const resourceControls = useControls('Resources', resourceControlsSchema, {
+    collapsed: true,
+  }) as Record<string, number>;
+  const resourceControlsKey = JSON.stringify(resourceControls);
+
   const initializeTerrain = ({
     width,
     height,
@@ -72,7 +122,7 @@ const World = ({ width, height }: { width: number; height: number }) => {
       for (let y = 0; y < height; y++) {
         const row: Block[] = [];
         for (let z = 0; z < width; z++) {
-          row.push({ type: 'empty', instanceId: null });
+          row.push(createBlock('empty'));
         }
         slice.push(row);
       }
@@ -84,15 +134,14 @@ const World = ({ width, height }: { width: number; height: number }) => {
     scale,
     magnitude,
     offset,
-    seed,
+    rng,
   }: {
     scale: number;
     magnitude: number;
     offset: number;
-    seed: number;
+    rng: RandomNumberGenerator;
   }) => {
-    const randomNumberGenerator = new RandomNumberGenerator(seed);
-    const simplexNoise = new SimplexNoise(randomNumberGenerator);
+    const simplexNoise = new SimplexNoise(rng);
     for (let x = 0; x < width; x++) {
       for (let z = 0; z < width; z++) {
         const value = simplexNoise.noise(x / scale, z / scale);
@@ -103,16 +152,55 @@ const World = ({ width, height }: { width: number; height: number }) => {
         _height = Math.max(0, Math.min(height - 1, _height));
 
         for (let y = 0; y < height; y++) {
+          const isResource = getBlockAt(x, y, z)?.isResource;
           if (y === _height) {
             setBlockTypeAt(x, y, z, 'grass');
-          } else if (y < _height) {
+          } else if (y < _height && !isResource) {
             setBlockTypeAt(x, y, z, 'dirt');
-          } else {
+          } else if (y > _height) {
             setBlockTypeAt(x, y, z, 'empty');
           }
         }
       }
     }
+  };
+
+  const generateResources = ({ rng }: { rng: RandomNumberGenerator }) => {
+    const resources = getResourceEntries();
+    resources.forEach(([resourceType, def]) => {
+      const scale = {
+        x: resourceControls[`${resourceType}::scaleX`] ?? def.resource.scale.x,
+        y: resourceControls[`${resourceType}::scaleY`] ?? def.resource.scale.y,
+        z: resourceControls[`${resourceType}::scaleZ`] ?? def.resource.scale.z,
+      };
+      const threshold = Math.min(
+        Math.max(
+          resourceControls[`${resourceType}::scarcity`] ??
+            def.resource.scarcity,
+          0
+        ),
+        1
+      );
+      const simplexNoise = new SimplexNoise(rng);
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          for (let z = 0; z < width; z++) {
+            const current = getBlockAt(x, y, z);
+            if (!current) {
+              continue;
+            }
+            const value = simplexNoise.noise3d(
+              x / scale.x,
+              y / scale.y,
+              z / scale.z
+            );
+            if (value > threshold) {
+              setBlockTypeAt(x, y, z, resourceType);
+            }
+          }
+        }
+      }
+    });
   };
 
   const generateMesh = () => {
@@ -152,10 +240,12 @@ const World = ({ width, height }: { width: number; height: number }) => {
 
   // Initialize terrain and generate mesh when parameters change
   useLayoutEffect(() => {
+    const rng = new RandomNumberGenerator(seed);
     initializeTerrain({ width, height });
-    generateTerrain({ scale, magnitude, offset, seed });
+    generateResources({ rng });
+    generateTerrain({ scale, magnitude, offset, rng });
     generateMesh();
-  }, [width, height, scale, magnitude, offset, seed]);
+  }, [width, height, scale, magnitude, offset, seed, resourceControlsKey]);
 
   return (
     <instancedMesh

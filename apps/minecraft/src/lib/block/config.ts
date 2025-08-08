@@ -1,4 +1,6 @@
 // Define block configurations with actual Minecraft colors
+import { BlockDefinition } from './types';
+
 export const BLOCK_CONFIGS = {
   empty: {
     type: 'empty' as const,
@@ -14,6 +16,11 @@ export const BLOCK_CONFIGS = {
   stone: {
     type: 'stone' as const,
     color: '#707070', // Official Minecraft stone gray
+    isResource: true,
+    resource: {
+      scale: { x: 30, y: 20, z: 30 },
+      scarcity: 0.5,
+    },
   },
   sand: {
     type: 'sand' as const,
@@ -35,30 +42,65 @@ export const BLOCK_CONFIGS = {
   coal_ore: {
     type: 'coal_ore' as const,
     color: '#4C4C4C', // Dark gray for coal
+    isResource: true,
+    resource: {
+      scale: { x: 24, y: 24, z: 24 },
+      scarcity: 0.75,
+    },
   },
   iron_ore: {
     type: 'iron_ore' as const,
     color: '#D8AF93', // Official raw iron color
+    isResource: true,
+    resource: {
+      scale: { x: 28, y: 28, z: 28 },
+      scarcity: 0.85,
+    },
   },
   gold_ore: {
     type: 'gold_ore' as const,
     color: '#FAEE4D', // Official Minecraft gold
+    isResource: true,
+    resource: {
+      scale: { x: 32, y: 32, z: 32 },
+      scarcity: 0.93,
+    },
   },
   diamond_ore: {
     type: 'diamond_ore' as const,
     color: '#5CDBD5', // Official Minecraft diamond
+    isResource: true,
+    resource: {
+      scale: { x: 40, y: 40, z: 40 },
+      scarcity: 0.98,
+    },
   },
   emerald_ore: {
     type: 'emerald_ore' as const,
     color: '#00D93A', // Official Minecraft emerald
+    isResource: true,
+    resource: {
+      scale: { x: 44, y: 44, z: 44 },
+      scarcity: 0.99,
+    },
   },
   lapis_ore: {
     type: 'lapis_ore' as const,
     color: '#4A80FF', // Official Minecraft lapis
+    isResource: true,
+    resource: {
+      scale: { x: 36, y: 36, z: 36 },
+      scarcity: 0.93,
+    },
   },
   redstone_ore: {
     type: 'redstone_ore' as const,
     color: '#FC3100', // Official powered redstone
+    isResource: true,
+    resource: {
+      scale: { x: 30, y: 30, z: 30 },
+      scarcity: 0.88,
+    },
   },
   obsidian: {
     type: 'obsidian' as const,
@@ -213,4 +255,4 @@ export const BLOCK_CONFIGS = {
     type: 'deepslate' as const,
     color: '#646464', // Official deepslate gray
   },
-} as const;
+} as const satisfies Record<string, BlockDefinition>;
