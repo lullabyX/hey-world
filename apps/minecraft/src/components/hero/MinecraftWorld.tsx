@@ -5,7 +5,7 @@ import React, { useLayoutEffect, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
-import { Block } from '@/lib/block';
+import { Block, createBlock } from '@/lib/block';
 import { useWorld } from '@/lib/world';
 
 const World = ({
@@ -46,7 +46,7 @@ const World = ({
       for (let y = 0; y < height; y++) {
         const row: Block[] = [];
         for (let z = 0; z < width; z++) {
-          row.push({ type: 'empty', instanceId: null });
+          row.push(createBlock('empty'));
         }
         slice.push(row);
       }
