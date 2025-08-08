@@ -60,44 +60,53 @@ const World = ({ width, height }: { width: number; height: number }) => {
   });
 
   const resources = useMemo(() => getResourceEntries(), []);
-  const resourceControlsSchema = useMemo(() => resources.reduce(
-    (acc, [resourceType, def]) => {
-      const scale = def.resource.scale;
-      acc[resourceType] = folder({
-        [`${resourceType}::scarcity`]: {
-          label: 'scarcity',
-          value: def.resource.scarcity,
-          min: 0,
-          max: 1,
-          step: 0.01,
+  const resourceControlsSchema = useMemo(
+    () =>
+      resources.reduce(
+        (acc, [resourceType, def]) => {
+          const scale = def.resource.scale;
+          acc[resourceType] = folder(
+            {
+              [`${resourceType}::scarcity`]: {
+                label: 'scarcity',
+                value: def.resource.scarcity,
+                min: 0,
+                max: 1,
+                step: 0.01,
+              },
+              [`${resourceType}::scaleX`]: {
+                label: 'scaleX',
+                value: scale.x,
+                min: 1,
+                max: 128,
+                step: 1,
+              },
+              [`${resourceType}::scaleY`]: {
+                label: 'scaleY',
+                value: scale.y,
+                min: 1,
+                max: 128,
+                step: 1,
+              },
+              [`${resourceType}::scaleZ`]: {
+                label: 'scaleZ',
+                value: scale.z,
+                min: 1,
+                max: 128,
+                step: 1,
+              },
+            },
+            { collapsed: true }
+          );
+          return acc;
         },
-        [`${resourceType}::scaleX`]: {
-          label: 'scaleX',
-          value: scale.x,
-          min: 1,
-          max: 128,
-          step: 1,
-        },
-        [`${resourceType}::scaleY`]: {
-          label: 'scaleY',
-          value: scale.y,
-          min: 1,
-          max: 128,
-          step: 1,
-        },
-        [`${resourceType}::scaleZ`]: {
-          label: 'scaleZ',
-          value: scale.z,
-          min: 1,
-          max: 128,
-          step: 1,
-        },
-      });
-      return acc;
-    },
-    {} as Record<string, any>
-  ), [resources]);
-  const resourceControls = useControls('Resources', resourceControlsSchema);
+        {} as Record<string, any>
+      ),
+    [resources]
+  );
+  const resourceControls = useControls('Resources', resourceControlsSchema, {
+    collapsed: true,
+  });
   const resourceControlsKey = JSON.stringify(resourceControls);
 
   const initializeTerrain = ({
