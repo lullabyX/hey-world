@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@hey-world/lib/src/utils';
+import { cn } from '@hey-world/lib';
 import { Button } from '@hey-world/ui';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
