@@ -100,13 +100,13 @@ const World = ({ width, height }: { width: number; height: number }) => {
           );
           return acc;
         },
-        {} as Record<string, ReturnType<typeof folder>>
+        {} as Record<string, unknown>
       ),
     [resources]
   );
   const resourceControls = useControls('Resources', resourceControlsSchema, {
     collapsed: true,
-  });
+  }) as Record<string, number>;
   const resourceControlsKey = JSON.stringify(resourceControls);
 
   const initializeTerrain = ({
