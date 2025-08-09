@@ -1,5 +1,8 @@
-import { BLOCK_CONFIGS } from './config';
-import { BlockDefinition, ResourceBlockDefinition } from './types';
+import {
+  BlockDefinition,
+  BLOCK_CONFIGS,
+  ResourceBlockDefinition,
+} from './types';
 
 export type ResourceEntry = [
   keyof typeof BLOCK_CONFIGS,

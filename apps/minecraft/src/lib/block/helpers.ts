@@ -1,5 +1,4 @@
-import { BLOCK_CONFIGS } from './config';
-import { Block, BlockDefinition, BlockType } from './types';
+import { Block, BlockDefinition, BlockType, BLOCK_CONFIGS } from './types';
 
 // Factory function remains simple
 export const createBlock = (

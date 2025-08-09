@@ -8,8 +8,18 @@ import {
 } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { folder, useControls } from 'leva';
-import React, { useLayoutEffect, useMemo, useRef } from 'react';
-import { Color, InstancedMesh, Matrix4 } from 'three';
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import {
+  Color,
+  InstancedBufferAttribute,
+  InstancedMesh,
+  Matrix4,
+  MeshLambertMaterial,
+  Vector2,
+  WebGLProgramParametersWithUniforms,
+} from 'three';
+import { createAtlasOnBeforeCompile, loadTextureTiles } from '@/lib/texture';
+import { useAtlas } from '@/lib/texture';
 import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
@@ -24,6 +34,11 @@ const World = ({ width, height }: { width: number; height: number }) => {
   const totalSize = width * width * height;
 
   const meshRef = useRef<InstancedMesh>(null);
+  const materialRef = useRef<MeshLambertMaterial>(null);
+  const { atlas, atlasScaleRef, atlasPaddingRef } = useAtlas(
+    { cols: 16, rows: 16 },
+    1
+  );
   const {
     terrainDataRef,
     getBlockAt,
@@ -130,6 +145,21 @@ const World = ({ width, height }: { width: number; height: number }) => {
     }
   };
 
+  // Inject shader to sample atlas with per-face offsets
+  useEffect(() => {
+    if (!materialRef.current) return;
+    const mat = materialRef.current;
+    const inject = createAtlasOnBeforeCompile({
+      atlasScaleRef,
+      atlasPaddingRef,
+    });
+    mat.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
+      mat.userData.shader = shader;
+      inject(shader);
+    };
+    mat.needsUpdate = true;
+  }, [atlasScaleRef, atlasPaddingRef]);
+
   const generateTerrain = ({
     scale,
     magnitude,
@@ -204,12 +234,25 @@ const World = ({ width, height }: { width: number; height: number }) => {
   };
 
   const generateMesh = () => {
-    if (!meshRef.current) {
+    if (!meshRef.current || !atlas || !materialRef.current) {
       return;
     }
 
     meshRef.current.count = 0;
     const matrix = new Matrix4();
+
+    const geom = meshRef.current.geometry;
+    const total = totalSize;
+    const uvTopArr = new Float32Array(total * 2);
+    const uvSideArr = new Float32Array(total * 2);
+    const uvBottomArr = new Float32Array(total * 2);
+    const tintTopArr = new Float32Array(total * 3);
+    const tintSideArr = new Float32Array(total * 3);
+    const tintBottomArr = new Float32Array(total * 3);
+
+    const atlasScale = new Vector2(1 / atlas.cols, 1 / atlas.rows);
+    atlasScaleRef.current.copy(atlasScale);
+
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         for (let z = 0; z < width; z++) {
@@ -223,9 +266,16 @@ const World = ({ width, height }: { width: number; height: number }) => {
             const instanceId = meshRef.current.count;
             setBlockInstanceIdAt(x, y, z, instanceId);
             meshRef.current.setMatrixAt(instanceId, matrix);
-            if (block.color) {
-              meshRef.current.setColorAt(instanceId, new Color(block.color));
-            }
+            loadTextureTiles({
+              block,
+              uvTopArr,
+              uvSideArr,
+              uvBottomArr,
+              tintTopArr,
+              tintSideArr,
+              tintBottomArr,
+              atlas,
+            });
             meshRef.current.count++;
           }
         }
@@ -233,8 +283,31 @@ const World = ({ width, height }: { width: number; height: number }) => {
     }
 
     meshRef.current.instanceMatrix.needsUpdate = true;
-    if (meshRef.current.instanceColor) {
-      meshRef.current.instanceColor.needsUpdate = true;
+
+    const uvTopAttr = new InstancedBufferAttribute(uvTopArr, 2);
+    const uvSideAttr = new InstancedBufferAttribute(uvSideArr, 2);
+    const uvBottomAttr = new InstancedBufferAttribute(uvBottomArr, 2);
+    const tintTopAttr = new InstancedBufferAttribute(tintTopArr, 3);
+    const tintSideAttr = new InstancedBufferAttribute(tintSideArr, 3);
+    const tintBottomAttr = new InstancedBufferAttribute(tintBottomArr, 3);
+
+    geom.setAttribute('uvTop', uvTopAttr);
+    geom.setAttribute('uvSide', uvSideAttr);
+    geom.setAttribute('uvBottom', uvBottomAttr);
+    geom.setAttribute('tintTop', tintTopAttr);
+    geom.setAttribute('tintSide', tintSideAttr);
+    geom.setAttribute('tintBottom', tintBottomAttr);
+
+    uvTopAttr.needsUpdate = true;
+    uvSideAttr.needsUpdate = true;
+    uvBottomAttr.needsUpdate = true;
+    tintTopAttr.needsUpdate = true;
+    tintSideAttr.needsUpdate = true;
+    tintBottomAttr.needsUpdate = true;
+
+    const shader = materialRef.current?.userData?.shader;
+    if (shader?.uniforms?.atlasScale) {
+      shader.uniforms.atlasScale.value.copy(atlasScaleRef.current);
     }
   };
 
@@ -245,15 +318,31 @@ const World = ({ width, height }: { width: number; height: number }) => {
     generateResources({ rng });
     generateTerrain({ scale, magnitude, offset, rng });
     generateMesh();
-  }, [width, height, scale, magnitude, offset, seed, resourceControlsKey]);
+  }, [
+    width,
+    height,
+    scale,
+    magnitude,
+    offset,
+    seed,
+    resourceControlsKey,
+    atlas,
+  ]);
+
+  // Bind atlas texture to material when ready
+  useEffect(() => {
+    if (!materialRef.current || !atlas) return;
+    materialRef.current.map = atlas.texture;
+    materialRef.current.needsUpdate = true;
+  }, [atlas]);
 
   return (
     <instancedMesh
       ref={meshRef}
       args={[undefined, undefined, totalSize]}
-      frustumCulled={false} // Disable per-instance culling for better performance
+      frustumCulled={false}
     >
-      <meshLambertMaterial />
+      <meshLambertMaterial ref={materialRef} />
       <boxGeometry args={[1, 1, 1]} />
     </instancedMesh>
   );
