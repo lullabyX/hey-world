@@ -8,28 +8,18 @@ import {
 } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { folder, useControls } from 'leva';
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import {
   Color,
   InstancedBufferAttribute,
   InstancedMesh,
   Matrix4,
   MeshLambertMaterial,
-  NearestFilter,
-  RepeatWrapping,
-  Texture,
-  TextureLoader,
   Vector2,
-  SRGBColorSpace,
+  WebGLProgramParametersWithUniforms,
 } from 'three';
-import type { StaticImageData } from 'next/image';
-import blocksAtlas from '@/public/atlas/blocks.png';
+import { createAtlasOnBeforeCompile, loadTextureTiles } from '@/lib/texture';
+import { useAtlas } from '@/lib/texture';
 import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
@@ -45,15 +35,10 @@ const World = ({ width, height }: { width: number; height: number }) => {
 
   const meshRef = useRef<InstancedMesh>(null);
   const materialRef = useRef<MeshLambertMaterial>(null);
-  const atlasScaleRef = useRef(new Vector2(1, 1));
-  const atlasPaddingRef = useRef(new Vector2(0, 0));
-
-  const [atlas, setAtlas] = useState<{
-    texture: Texture;
-    cols: number;
-    rows: number;
-    tileIndexByName: Record<string, number>;
-  } | null>(null);
+  const { atlas, atlasScaleRef, atlasPaddingRef } = useAtlas(
+    { cols: 16, rows: 16 },
+    1
+  );
   const {
     terrainDataRef,
     getBlockAt,
@@ -164,93 +149,16 @@ const World = ({ width, height }: { width: number; height: number }) => {
   useEffect(() => {
     if (!materialRef.current) return;
     const mat = materialRef.current;
-    mat.onBeforeCompile = (shader) => {
-      shader.uniforms.atlasScale = { value: atlasScaleRef.current };
-      shader.uniforms.atlasPadding = { value: atlasPaddingRef.current };
-      shader.vertexShader =
-        `
-        attribute vec2 uvTop;
-        attribute vec2 uvSide;
-        attribute vec2 uvBottom;
-        uniform vec2 atlasScale;
-        uniform vec2 atlasPadding;
-        varying vec2 vUvAtlas;
-      ` +
-        shader.vertexShader.replace(
-          '#include <uv_vertex>',
-          `
-        #include <uv_vertex>
-        vec2 _uvOffset = (normal.y > 0.5) ? uvTop : ((normal.y < -0.5) ? uvBottom : uvSide);
-        vUvAtlas = (uv * (atlasScale - 2.0 * atlasPadding)) + (_uvOffset + atlasPadding);
-        `
-        );
-      shader.fragmentShader =
-        `
-        varying vec2 vUvAtlas;
-      ` +
-        shader.fragmentShader.replace(
-          '#include <map_fragment>',
-          `
-        #ifdef USE_MAP
-          vec4 sampledDiffuseColor = texture2D( map, vUvAtlas );
-          diffuseColor *= sampledDiffuseColor;
-        #endif
-        `
-        );
-      (mat as any).userData.shader = shader;
+    const inject = createAtlasOnBeforeCompile({
+      atlasScaleRef,
+      atlasPaddingRef,
+    });
+    mat.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
+      mat.userData.shader = shader;
+      inject(shader);
     };
     mat.needsUpdate = true;
-  }, []);
-
-  // Build a small texture atlas from remote block textures
-  useEffect(() => {
-    let cancelled = false;
-    const loader = new TextureLoader();
-    loader.setCrossOrigin('anonymous');
-    const atlasUrl =
-      (blocksAtlas as any)?.src ?? (blocksAtlas as unknown as string);
-    loader.load(
-      atlasUrl,
-      (texture) => {
-        if (cancelled) return;
-        texture.magFilter = NearestFilter;
-        texture.minFilter = NearestFilter;
-        texture.generateMipmaps = false;
-        texture.wrapS = RepeatWrapping;
-        texture.wrapT = RepeatWrapping;
-        texture.colorSpace = SRGBColorSpace;
-        const cols = 16;
-        const rows = 16;
-        const texW = (texture.image as any)?.width ?? 256;
-        const texH = (texture.image as any)?.height ?? 256;
-        const paddingPixels = 1; // shrink each tile sampling by 1px on every side
-        atlasPaddingRef.current.set(paddingPixels / texW, paddingPixels / texH);
-        const tileIndexByName: Record<string, number> = {
-          grass: 0,
-          stone: 1,
-          dirt: 2,
-          grassSide: 3,
-          planks: 4,
-          sand: 18,
-          treeSide: 20,
-          treeTop: 21,
-          cloud: 22,
-          goldOre: 32,
-          ironOre: 33,
-          coalOre: 34,
-          leaves: 53,
-        };
-        setAtlas({ texture, cols, rows, tileIndexByName });
-      },
-      undefined,
-      () => {
-        // ignore
-      }
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [atlasScaleRef, atlasPaddingRef]);
 
   const generateTerrain = ({
     scale,
@@ -326,29 +234,25 @@ const World = ({ width, height }: { width: number; height: number }) => {
   };
 
   const generateMesh = () => {
-    if (!meshRef.current || !atlas) {
+    if (!meshRef.current || !atlas || !materialRef.current) {
       return;
     }
 
     meshRef.current.count = 0;
     const matrix = new Matrix4();
 
-    const geom = meshRef.current.geometry as any;
+    const geom = meshRef.current.geometry;
     const total = totalSize;
     const uvTopArr = new Float32Array(total * 2);
     const uvSideArr = new Float32Array(total * 2);
     const uvBottomArr = new Float32Array(total * 2);
+    const tintTopArr = new Float32Array(total * 3);
+    const tintSideArr = new Float32Array(total * 3);
+    const tintBottomArr = new Float32Array(total * 3);
 
     const atlasScale = new Vector2(1 / atlas.cols, 1 / atlas.rows);
     atlasScaleRef.current.copy(atlasScale);
 
-    const tileIndexToOffset = (index: number) => {
-      const col = index % atlas.cols;
-      const row = Math.floor(index / atlas.cols);
-      const u = col * atlasScale.x;
-      const v = 1 - (row + 1) * atlasScale.y; // flip Y because UV origin is bottom-left
-      return [u, v] as const;
-    };
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         for (let z = 0; z < width; z++) {
@@ -362,47 +266,16 @@ const World = ({ width, height }: { width: number; height: number }) => {
             const instanceId = meshRef.current.count;
             setBlockInstanceIdAt(x, y, z, instanceId);
             meshRef.current.setMatrixAt(instanceId, matrix);
-            // Select textures per face
-            const texMap = (block as any).textureMap as string[] | undefined;
-            let topName: string;
-            let sideName: string;
-            let bottomName: string;
-            if (texMap && typeof texMap[0] === 'string') {
-              topName = texMap[0] as string;
-              sideName = (texMap[1] as string) ?? topName;
-              bottomName = (texMap[2] as string) ?? topName;
-            } else if (block.type === 'grass') {
-              topName = 'grass';
-              sideName = 'grassSide';
-              bottomName = 'dirt';
-            } else if (block.type === 'dirt') {
-              topName = 'dirt';
-              sideName = 'dirt';
-              bottomName = 'dirt';
-            } else if (block.type === 'stone') {
-              topName = 'stone';
-              sideName = 'stone';
-              bottomName = 'stone';
-            } else {
-              topName = 'dirt';
-              sideName = 'dirt';
-              bottomName = 'dirt';
-            }
-
-            const topIdx = atlas.tileIndexByName[topName] ?? 0;
-            const sideIdx = atlas.tileIndexByName[sideName] ?? 0;
-            const bottomIdx = atlas.tileIndexByName[bottomName] ?? 0;
-
-            const [uT, vT] = tileIndexToOffset(topIdx);
-            const [uS, vS] = tileIndexToOffset(sideIdx);
-            const [uB, vB] = tileIndexToOffset(bottomIdx);
-
-            uvTopArr[instanceId * 2 + 0] = uT;
-            uvTopArr[instanceId * 2 + 1] = vT;
-            uvSideArr[instanceId * 2 + 0] = uS;
-            uvSideArr[instanceId * 2 + 1] = vS;
-            uvBottomArr[instanceId * 2 + 0] = uB;
-            uvBottomArr[instanceId * 2 + 1] = vB;
+            loadTextureTiles({
+              block,
+              uvTopArr,
+              uvSideArr,
+              uvBottomArr,
+              tintTopArr,
+              tintSideArr,
+              tintBottomArr,
+              atlas,
+            });
             meshRef.current.count++;
           }
         }
@@ -410,14 +283,29 @@ const World = ({ width, height }: { width: number; height: number }) => {
     }
 
     meshRef.current.instanceMatrix.needsUpdate = true;
-    geom.setAttribute('uvTop', new InstancedBufferAttribute(uvTopArr, 2));
-    geom.setAttribute('uvSide', new InstancedBufferAttribute(uvSideArr, 2));
-    geom.setAttribute('uvBottom', new InstancedBufferAttribute(uvBottomArr, 2));
-    geom.attributes.uvTop.needsUpdate = true;
-    geom.attributes.uvSide.needsUpdate = true;
-    geom.attributes.uvBottom.needsUpdate = true;
 
-    const shader = (materialRef.current as any)?.userData?.shader;
+    const uvTopAttr = new InstancedBufferAttribute(uvTopArr, 2);
+    const uvSideAttr = new InstancedBufferAttribute(uvSideArr, 2);
+    const uvBottomAttr = new InstancedBufferAttribute(uvBottomArr, 2);
+    const tintTopAttr = new InstancedBufferAttribute(tintTopArr, 3);
+    const tintSideAttr = new InstancedBufferAttribute(tintSideArr, 3);
+    const tintBottomAttr = new InstancedBufferAttribute(tintBottomArr, 3);
+
+    geom.setAttribute('uvTop', uvTopAttr);
+    geom.setAttribute('uvSide', uvSideAttr);
+    geom.setAttribute('uvBottom', uvBottomAttr);
+    geom.setAttribute('tintTop', tintTopAttr);
+    geom.setAttribute('tintSide', tintSideAttr);
+    geom.setAttribute('tintBottom', tintBottomAttr);
+
+    uvTopAttr.needsUpdate = true;
+    uvSideAttr.needsUpdate = true;
+    uvBottomAttr.needsUpdate = true;
+    tintTopAttr.needsUpdate = true;
+    tintSideAttr.needsUpdate = true;
+    tintBottomAttr.needsUpdate = true;
+
+    const shader = materialRef.current?.userData?.shader;
     if (shader?.uniforms?.atlasScale) {
       shader.uniforms.atlasScale.value.copy(atlasScaleRef.current);
     }

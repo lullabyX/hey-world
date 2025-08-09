@@ -1,4 +1,4 @@
-import { BLOCK_CONFIGS } from './config';
+import { BLOCK_CONFIGS, TILES } from './config';
 
 // Unified schema (moved from schema.ts to keep a single source of truth)
 export type Vector3 = {
@@ -18,7 +18,18 @@ export type CommonBlockProps = {
   color?: string;
   transparent?: boolean;
   emissive?: boolean;
-  textureMap?: string[];
+  // Numeric tile indices into the active blocks atlas (grid-based)
+  // If a block uses the same tile on all faces, set all three to the same index
+  textureTiles?: {
+    tint?: {
+      top?: string;
+      side?: string;
+      bottom?: string;
+    };
+    top: number;
+    side: number;
+    bottom: number;
+  };
 };
 
 export type ResourceBlockDefinition = CommonBlockProps & {
@@ -51,3 +62,5 @@ export type Block = {
 
 // Helper type to get a specific block (if needed)
 export type BlockOfType<T extends BlockType> = BaseBlock & BlockConfig[T];
+
+export type TileName = keyof typeof TILES;
