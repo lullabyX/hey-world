@@ -26,6 +26,7 @@ import {
   Texture,
   TextureLoader,
   Vector2,
+  SRGBColorSpace,
 } from 'three';
 import type { StaticImageData } from 'next/image';
 import blocksAtlas from '@/public/atlas/blocks.png';
@@ -45,6 +46,7 @@ const World = ({ width, height }: { width: number; height: number }) => {
   const meshRef = useRef<InstancedMesh>(null);
   const materialRef = useRef<MeshLambertMaterial>(null);
   const atlasScaleRef = useRef(new Vector2(1, 1));
+  const atlasPaddingRef = useRef(new Vector2(0, 0));
 
   const [atlas, setAtlas] = useState<{
     texture: Texture;
@@ -164,12 +166,14 @@ const World = ({ width, height }: { width: number; height: number }) => {
     const mat = materialRef.current;
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.atlasScale = { value: atlasScaleRef.current };
+      shader.uniforms.atlasPadding = { value: atlasPaddingRef.current };
       shader.vertexShader =
         `
         attribute vec2 uvTop;
         attribute vec2 uvSide;
         attribute vec2 uvBottom;
         uniform vec2 atlasScale;
+        uniform vec2 atlasPadding;
         varying vec2 vUvAtlas;
       ` +
         shader.vertexShader.replace(
@@ -177,7 +181,7 @@ const World = ({ width, height }: { width: number; height: number }) => {
           `
         #include <uv_vertex>
         vec2 _uvOffset = (normal.y > 0.5) ? uvTop : ((normal.y < -0.5) ? uvBottom : uvSide);
-        vUvAtlas = (uv * atlasScale) + _uvOffset;
+        vUvAtlas = (uv * (atlasScale - 2.0 * atlasPadding)) + (_uvOffset + atlasPadding);
         `
         );
       shader.fragmentShader =
@@ -214,8 +218,13 @@ const World = ({ width, height }: { width: number; height: number }) => {
         texture.generateMipmaps = false;
         texture.wrapS = RepeatWrapping;
         texture.wrapT = RepeatWrapping;
+        texture.colorSpace = SRGBColorSpace;
         const cols = 16;
         const rows = 16;
+        const texW = (texture.image as any)?.width ?? 256;
+        const texH = (texture.image as any)?.height ?? 256;
+        const paddingPixels = 1; // shrink each tile sampling by 1px on every side
+        atlasPaddingRef.current.set(paddingPixels / texW, paddingPixels / texH);
         const tileIndexByName: Record<string, number> = {
           grass: 0,
           stone: 1,
