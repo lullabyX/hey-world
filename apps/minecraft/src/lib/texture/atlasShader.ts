@@ -23,11 +23,39 @@ export function createAtlasOnBeforeCompile(uniformRefs: {
         '#include <uv_vertex>',
         `
         #include <uv_vertex>
+        // Compute per-face quad UVs from geometry, independent of the built-in box UV unwrap
+        vec2 baseUv;
+        if (normal.y > 0.5) {
+          // top: project XZ
+          baseUv = position.xz + 0.5;
+        } else if (normal.y < -0.5) {
+          // bottom: project XZ (flip V for consistency)
+          baseUv = position.xz + 0.5;
+          baseUv.y = 1.0 - baseUv.y;
+        } else if (abs(normal.x) > 0.5) {
+          // ±X sides: project ZY, flip U for +X to match outward facing orientation
+          baseUv = vec2(normal.x > 0.0 ? -position.z : position.z, position.y) + 0.5;
+        } else {
+          // ±Z sides: project XY, flip U for -Z to match outward facing orientation
+          baseUv = vec2(normal.z > 0.0 ? position.x : -position.x, position.y) + 0.5;
+        }
         vec2 _uvOffset = (normal.y > 0.5) ? uvTop : ((normal.y < -0.5) ? uvBottom : uvSide);
-        vUvAtlas = (uv * (atlasScale - 2.0 * atlasPadding)) + (_uvOffset + atlasPadding);
+        vec2 tileScale = atlasScale;
+        if (tileScale.x > 0.99) {
+          // Fallback in case atlasScale uniform hasn't been initialized yet
+          tileScale = vec2(1.0/16.0, 1.0/16.0);
+        }
+        vUvAtlas = (baseUv * (tileScale - 2.0 * atlasPadding)) + (_uvOffset + atlasPadding);
         vTint = (normal.y > 0.5) ? tintTop : ((normal.y < -0.5) ? tintBottom : tintSide);
         `
       );
+    // Ensure the map UV passed to the fragment uses our atlas coordinates
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <map_vertex>',
+      `#ifdef USE_MAP
+        vMapUv = vUvAtlas;
+      #endif`
+    );
     shader.fragmentShader =
       `
         varying vec2 vUvAtlas;
@@ -38,10 +66,12 @@ export function createAtlasOnBeforeCompile(uniformRefs: {
         `
         #ifdef USE_MAP
           vec4 sampledDiffuseColor = texture2D( map, vUvAtlas );
+          #ifdef DECODE_VIDEO_TEXTURE
+            sampledDiffuseColor = sRGBTransferEOTF( sampledDiffuseColor );
+          #endif
           diffuseColor *= sampledDiffuseColor;
         #endif
-        diffuseColor.rgb *= vTint;
-        `
+        diffuseColor.rgb *= vTint;`
       );
   };
 }

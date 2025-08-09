@@ -269,6 +269,10 @@ const World = ({ width, height }: { width: number; height: number }) => {
 
             const instanceId = meshRef.current.count;
             setBlockInstanceIdAt(x, y, z, instanceId);
+            // Ensure the local block reference carries the instanceId for attribute writes
+            if (block) {
+              (block as Block).instanceId = instanceId;
+            }
             meshRef.current.setMatrixAt(instanceId, matrix);
             loadTextureTiles({
               block,
@@ -390,7 +394,7 @@ const MinecraftSection = () => {
 
     const { intensity, x, y, z } = useControls('Lights', {
       intensity: {
-        value: 1.6,
+        value: 0.8,
         min: 0,
         max: 10,
         step: 0.1,
@@ -417,7 +421,6 @@ const MinecraftSection = () => {
       }),
     });
 
-
     return (
       <group>
         <directionalLight
@@ -426,6 +429,7 @@ const MinecraftSection = () => {
           intensity={intensity}
           castShadow
           shadow-mapSize={[512, 512]}
+          shadow-bias={-0.0005}
         >
           <orthographicCamera
             ref={orthoCamRef}
@@ -438,7 +442,7 @@ const MinecraftSection = () => {
             far={100}
           />
         </directionalLight>
-        <ambientLight intensity={0.2} />
+        <ambientLight intensity={0.8} />
       </group>
     );
   };

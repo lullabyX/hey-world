@@ -36,7 +36,7 @@ export const BLOCK_CONFIGS = {
     color: '#7FB238',
     textureTiles: {
       tint: {
-        top: '#83BB6D',
+        top: '#92BC58',
       },
       top: TILES.grass,
       side: TILES.grassSide,
