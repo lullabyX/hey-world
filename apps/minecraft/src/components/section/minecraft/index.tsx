@@ -280,8 +280,6 @@ const World = ({ width, height }: { width: number; height: number }) => {
               tintBottomArr,
               atlas,
             });
-            meshRef.current.castShadow = true;
-            meshRef.current.receiveShadow = true;
             meshRef.current.count++;
           }
         }
@@ -347,8 +345,10 @@ const World = ({ width, height }: { width: number; height: number }) => {
       ref={meshRef}
       args={[undefined, undefined, totalSize]}
       frustumCulled={false}
+      castShadow
+      receiveShadow
     >
-      <meshLambertMaterial ref={materialRef} />
+      <meshLambertMaterial ref={materialRef} flatShading />
       <boxGeometry args={[1, 1, 1]} />
     </instancedMesh>
   );
@@ -382,30 +382,63 @@ const MinecraftSection = () => {
     useHelper(dirLightRef, DirectionalLightHelper, 20, 0xffaa00);
 
     // Draw the light’s shadow camera frustum
+
     useHelper(orthoCamRef, CameraHelper);
 
-    const SIZE = 50; // expand shadow coverage area
+    // Fit shadow frustum to world dimensions for stable, sharper shadows
+    const SIZE = 50;
+
+    const { intensity, x, y, z } = useControls('Lights', {
+      intensity: {
+        value: 1.6,
+        min: 0,
+        max: 10,
+        step: 0.1,
+      },
+      position: folder({
+        x: {
+          value: 50,
+          min: -100,
+          max: 100,
+          step: 0.1,
+        },
+        y: {
+          value: 50,
+          min: -100,
+          max: 100,
+          step: 0.1,
+        },
+        z: {
+          value: 50,
+          min: -100,
+          max: 100,
+          step: 0.1,
+        },
+      }),
+    });
+
+
     return (
       <group>
         <directionalLight
           ref={dirLightRef}
-          position={[50, 50, 50]}
-          intensity={0.8}
+          position={[x, y, z]}
+          intensity={intensity}
           castShadow
-          shadow-mapSize={[1024, 1024]} // higher-res shadow map
+          shadow-mapSize={[512, 512]}
         >
           <orthographicCamera
             ref={orthoCamRef}
-            attach="shadow.camera"
-            left={-SIZE}
-            right={SIZE}
+            attach="shadow-camera"
             top={SIZE}
             bottom={-SIZE}
+            left={-SIZE}
+            right={SIZE}
             near={0.1}
             far={100}
           />
         </directionalLight>
-        <ambientLight intensity={0.1} />
+        <ambientLight intensity={0.2} />
       </group>
     );
   };
@@ -427,8 +460,12 @@ const MinecraftSection = () => {
           far: 1000,
           position: [width * 0.15, height + 10, -width * 0.8],
         }}
-        shadows="soft"
-        scene={{ background: new Color('#80a0e0') }}
+        shadows
+        scene={{
+          background: new Color('#80a0e0'),
+          castShadow: true,
+          receiveShadow: true,
+        }}
       >
         <gridHelper args={[128, 128]} />
         <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
