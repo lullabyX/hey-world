@@ -5,6 +5,7 @@ import {
   GizmoViewport,
   OrbitControls,
   Stats,
+  useHelper,
 } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { folder, useControls } from 'leva';
@@ -17,7 +18,10 @@ import {
   MeshLambertMaterial,
   Vector2,
   WebGLProgramParametersWithUniforms,
+  DirectionalLightHelper,
+  CameraHelper,
 } from 'three';
+import type { DirectionalLight, OrthographicCamera } from 'three';
 import { createAtlasOnBeforeCompile, loadTextureTiles } from '@/lib/texture';
 import { useAtlas } from '@/lib/texture';
 import { cn } from '@lib/src';
@@ -276,6 +280,8 @@ const World = ({ width, height }: { width: number; height: number }) => {
               tintBottomArr,
               atlas,
             });
+            meshRef.current.castShadow = true;
+            meshRef.current.receiveShadow = true;
             meshRef.current.count++;
           }
         }
@@ -368,6 +374,42 @@ const MinecraftSection = () => {
     },
   });
 
+  const Lights = () => {
+    const dirLightRef = React.useRef<DirectionalLight>(null!);
+    const orthoCamRef = React.useRef<OrthographicCamera>(null!);
+
+    // Bigger yellow helper for the light itself
+    useHelper(dirLightRef, DirectionalLightHelper, 20, 0xffaa00);
+
+    // Draw the light’s shadow camera frustum
+    useHelper(orthoCamRef, CameraHelper);
+
+    const SIZE = 50; // expand shadow coverage area
+    return (
+      <group>
+        <directionalLight
+          ref={dirLightRef}
+          position={[50, 50, 50]}
+          intensity={0.8}
+          castShadow
+          shadow-mapSize={[1024, 1024]} // higher-res shadow map
+        >
+          <orthographicCamera
+            ref={orthoCamRef}
+            attach="shadow.camera"
+            left={-SIZE}
+            right={SIZE}
+            top={SIZE}
+            bottom={-SIZE}
+            near={0.1}
+            far={100}
+          />
+        </directionalLight>
+        <ambientLight intensity={0.1} />
+      </group>
+    );
+  };
+
   return (
     <section
       ref={sectionRef}
@@ -385,6 +427,7 @@ const MinecraftSection = () => {
           far: 1000,
           position: [width * 0.15, height + 10, -width * 0.8],
         }}
+        shadows="soft"
         scene={{ background: new Color('#80a0e0') }}
       >
         <gridHelper args={[128, 128]} />
@@ -392,9 +435,7 @@ const MinecraftSection = () => {
           <GizmoViewport />
         </GizmoHelper>
         <World width={width} height={height} />
-        <directionalLight position={[1, 1, 1]} intensity={0.8} />
-        <directionalLight position={[-1, 1, -0.5]} intensity={0.4} />
-        <ambientLight intensity={0.2} />
+        <Lights />
         <OrbitControls target={[0, 0, 0]} />
         <Stats />
         <CameraMonitor />
