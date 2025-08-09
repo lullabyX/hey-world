@@ -1,5 +1,5 @@
 import { Atlas } from './useAtlas';
-import { Block, CommonBlockProps } from '../block';
+import { Block, CommonBlockProps } from '@/lib/block';
 import { Color } from 'three';
 
 // Return UV offset for a given tile index in a grid atlas

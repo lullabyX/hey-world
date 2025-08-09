@@ -8,7 +8,7 @@ import {
   Vector2,
 } from 'three';
 import blocksAtlas from '@/public/atlas/blocks.png';
-import { TILES } from '@/lib/textures/tiles';
+import { TILES } from '@/lib/block/types';
 
 export type Atlas = {
   texture: Texture;
