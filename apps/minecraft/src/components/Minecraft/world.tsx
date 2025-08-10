@@ -1,7 +1,13 @@
 'use client';
 
 import { folder, useControls } from 'leva';
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import {
   InstancedBufferAttribute,
   InstancedMesh,
@@ -112,13 +118,7 @@ const World = ({ width, height }: { width: number; height: number }) => {
   }) as Record<string, number>;
   const resourceControlsKey = JSON.stringify(resourceControls);
 
-  const initializeTerrain = ({
-    width,
-    height,
-  }: {
-    width: number;
-    height: number;
-  }) => {
+  const initializeTerrain = useCallback(() => {
     terrainDataRef.current = [];
     for (let x = 0; x < width; x++) {
       const slice: Block[][] = [];
@@ -131,7 +131,7 @@ const World = ({ width, height }: { width: number; height: number }) => {
       }
       terrainDataRef.current.push(slice);
     }
-  };
+  }, [terrainDataRef, width, height]);
 
   // Inject shader to sample atlas with per-face offsets
   useEffect(() => {
@@ -148,80 +148,79 @@ const World = ({ width, height }: { width: number; height: number }) => {
     mat.needsUpdate = true;
   }, [atlasScaleRef, atlasPaddingRef]);
 
-  const generateTerrain = ({
-    scale,
-    magnitude,
-    offset,
-    rng,
-  }: {
-    scale: number;
-    magnitude: number;
-    offset: number;
-    rng: RandomNumberGenerator;
-  }) => {
-    const simplexNoise = new SimplexNoise(rng);
-    for (let x = 0; x < width; x++) {
-      for (let z = 0; z < width; z++) {
-        const value = simplexNoise.noise(x / scale, z / scale);
-        const scaledValue = value * magnitude + offset;
-
-        let _height = Math.floor(height * scaledValue);
-
-        _height = Math.max(0, Math.min(height - 1, _height));
-
-        for (let y = 0; y < height; y++) {
-          const isResource = getBlockAt(x, y, z)?.isResource;
-          if (y === _height) {
-            setBlockTypeAt(x, y, z, 'grass');
-          } else if (y < _height && !isResource) {
-            setBlockTypeAt(x, y, z, 'dirt');
-          } else if (y > _height) {
-            setBlockTypeAt(x, y, z, 'empty');
-          }
-        }
-      }
-    }
-  };
-
-  const generateResources = ({ rng }: { rng: RandomNumberGenerator }) => {
-    const resources = getResourceEntries();
-    resources.forEach(([resourceType, def]) => {
-      const scale = {
-        x: resourceControls[`${resourceType}::scaleX`] ?? def.resource.scale.x,
-        y: resourceControls[`${resourceType}::scaleY`] ?? def.resource.scale.y,
-        z: resourceControls[`${resourceType}::scaleZ`] ?? def.resource.scale.z,
-      };
-      const threshold = Math.min(
-        Math.max(
-          resourceControls[`${resourceType}::scarcity`] ??
-            def.resource.scarcity,
-          0
-        ),
-        1
-      );
+  const generateTerrain = useCallback(
+    ({ rng }: { rng: RandomNumberGenerator }) => {
       const simplexNoise = new SimplexNoise(rng);
       for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) {
-          for (let z = 0; z < width; z++) {
-            const current = getBlockAt(x, y, z);
-            if (!current) {
-              continue;
-            }
-            const value = simplexNoise.noise3d(
-              x / scale.x,
-              y / scale.y,
-              z / scale.z
-            );
-            if (value > threshold) {
-              setBlockTypeAt(x, y, z, resourceType);
+        for (let z = 0; z < width; z++) {
+          const value = simplexNoise.noise(x / scale, z / scale);
+          const scaledValue = value * magnitude + offset;
+
+          let _height = Math.floor(height * scaledValue);
+
+          _height = Math.max(0, Math.min(height - 1, _height));
+
+          for (let y = 0; y < height; y++) {
+            const isResource = getBlockAt(x, y, z)?.isResource;
+            if (y === _height) {
+              setBlockTypeAt(x, y, z, 'grass');
+            } else if (y < _height && !isResource) {
+              setBlockTypeAt(x, y, z, 'dirt');
+            } else if (y > _height) {
+              setBlockTypeAt(x, y, z, 'empty');
             }
           }
         }
       }
-    });
-  };
+    },
+    [width, height, getBlockAt, setBlockTypeAt, scale, magnitude, offset]
+  );
 
-  const generateMesh = () => {
+  const generateResources = useCallback(
+    ({ rng }: { rng: RandomNumberGenerator }) => {
+      const resources = getResourceEntries();
+      resources.forEach(([resourceType, def]) => {
+        const scale = {
+          x:
+            resourceControls[`${resourceType}::scaleX`] ?? def.resource.scale.x,
+          y:
+            resourceControls[`${resourceType}::scaleY`] ?? def.resource.scale.y,
+          z:
+            resourceControls[`${resourceType}::scaleZ`] ?? def.resource.scale.z,
+        };
+        const threshold = Math.min(
+          Math.max(
+            resourceControls[`${resourceType}::scarcity`] ??
+              def.resource.scarcity,
+            0
+          ),
+          1
+        );
+        const simplexNoise = new SimplexNoise(rng);
+        for (let x = 0; x < width; x++) {
+          for (let y = 0; y < height; y++) {
+            for (let z = 0; z < width; z++) {
+              const current = getBlockAt(x, y, z);
+              if (!current) {
+                continue;
+              }
+              const value = simplexNoise.noise3d(
+                x / scale.x,
+                y / scale.y,
+                z / scale.z
+              );
+              if (value > threshold) {
+                setBlockTypeAt(x, y, z, resourceType);
+              }
+            }
+          }
+        }
+      });
+    },
+    [width, height, getBlockAt, setBlockTypeAt, resourceControlsKey]
+  );
+
+  const generateMesh = useCallback(() => {
     if (!meshRef.current || !atlas || !materialRef.current) {
       return;
     }
@@ -301,24 +300,32 @@ const World = ({ width, height }: { width: number; height: number }) => {
     if (shader?.uniforms?.atlasScale) {
       shader.uniforms.atlasScale.value.copy(atlasScaleRef.current);
     }
-  };
+  }, [
+    width,
+    height,
+    getBlockAt,
+    setBlockInstanceIdAt,
+    isBlockVisible,
+    halfSize,
+    totalSize,
+    atlas,
+    atlasScaleRef,
+    materialRef,
+  ]);
 
   // Initialize terrain and generate mesh when parameters change
   useLayoutEffect(() => {
     const rng = new RandomNumberGenerator(seed);
-    initializeTerrain({ width, height });
+    initializeTerrain();
     generateResources({ rng });
-    generateTerrain({ scale, magnitude, offset, rng });
+    generateTerrain({ rng });
     generateMesh();
   }, [
-    width,
-    height,
-    scale,
-    magnitude,
-    offset,
+    initializeTerrain,
+    generateResources,
+    generateTerrain,
+    generateMesh,
     seed,
-    resourceControlsKey,
-    atlas,
   ]);
 
   // Bind atlas texture to material when ready
