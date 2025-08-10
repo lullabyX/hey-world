@@ -14,21 +14,16 @@ const Lights = () => {
   const dirLightRef = useRef<DirectionalLight>(null!);
   const orthoCamRef = useRef<OrthographicCamera>(null!);
 
-  const { showHelpers } = useControls(
+  const { Sun } = useControls(
     'Debug',
     {
-      showHelpers: { value: false },
+      Sun: { value: false },
     },
     { collapsed: true }
   );
 
-  useHelper(
-    showHelpers ? dirLightRef : null,
-    DirectionalLightHelper,
-    20,
-    0xffaa00
-  );
-  useHelper(showHelpers ? orthoCamRef : null, CameraHelper);
+  useHelper(Sun ? dirLightRef : null, DirectionalLightHelper, 20, 0xffaa00);
+  useHelper(Sun ? orthoCamRef : null, CameraHelper);
 
   const SIZE = 100;
   return (
@@ -44,12 +39,12 @@ const Lights = () => {
         <orthographicCamera
           ref={orthoCamRef}
           attach="shadow-camera"
-          top={SIZE}
-          bottom={-SIZE}
+          top={SIZE / 2}
+          bottom={-SIZE / 2}
           left={-SIZE}
           right={SIZE}
           near={0.1}
-          far={SIZE * 1.5}
+          far={SIZE * 1.6}
         />
       </directionalLight>
       <ambientLight intensity={0.8} />
