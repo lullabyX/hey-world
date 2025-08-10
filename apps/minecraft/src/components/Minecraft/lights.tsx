@@ -1,7 +1,8 @@
 'use client';
 
 import { useHelper } from '@react-three/drei';
-import React from 'react';
+import { useRef } from 'react';
+import { useControls } from 'leva';
 import {
   CameraHelper,
   DirectionalLight,
@@ -10,37 +11,45 @@ import {
 } from 'three';
 
 const Lights = () => {
-  const dirLightRef = React.useRef<DirectionalLight>(null!);
-  const orthoCamRef = React.useRef<OrthographicCamera>(null!);
+  const dirLightRef = useRef<DirectionalLight>(null!);
+  const orthoCamRef = useRef<OrthographicCamera>(null!);
 
-  // Bigger yellow helper for the light itself
-  useHelper(dirLightRef, DirectionalLightHelper, 20, 0xffaa00);
+  const { showHelpers } = useControls(
+    'Debug',
+    {
+      showHelpers: { value: false },
+    },
+    { collapsed: true }
+  );
 
-  // Draw the light’s shadow camera frustum
+  useHelper(
+    showHelpers ? dirLightRef : null,
+    DirectionalLightHelper,
+    20,
+    0xffaa00
+  );
+  useHelper(showHelpers ? orthoCamRef : null, CameraHelper);
 
-  useHelper(orthoCamRef, CameraHelper);
-
-  // Fit shadow frustum to world dimensions for stable, sharper shadows
-
+  const SIZE = 100;
   return (
     <group>
       <directionalLight
         ref={dirLightRef}
-        position={[25, 25, 25]}
-        intensity={2}
+        position={[SIZE / 2, SIZE / 2.5, SIZE / 2]}
+        intensity={1.6}
         castShadow
         shadow-mapSize={[512, 512]}
-        shadow-bias={-0.0005}
+        shadow-bias={-0.005}
       >
         <orthographicCamera
           ref={orthoCamRef}
           attach="shadow-camera"
-          top={50}
-          bottom={-50}
-          left={-50}
-          right={50}
+          top={SIZE}
+          bottom={-SIZE}
+          left={-SIZE}
+          right={SIZE}
           near={0.1}
-          far={75}
+          far={SIZE * 1.5}
         />
       </directionalLight>
       <ambientLight intensity={0.8} />
