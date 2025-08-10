@@ -13,17 +13,21 @@ const LevaControl = ({ divProps, levaProps }: LevaControlProps) => {
 
   return (
     <div
-      className={cn('absolute right-0 top-0 z-10 p-4', className)}
+      className={cn(
+        'pointer-events-none absolute left-2 top-2 z-50',
+        className
+      )}
       style={{ isolation: 'isolate', ...style }}
       {...restDivProps}
     >
-      <Leva
-        collapsed={false}
-        oneLineLabels={false}
-        fill
-        hideCopyButton
-        {...levaProps}
-      />
+      <div className="pointer-events-auto relative">
+        <Leva
+          collapsed={false}
+          oneLineLabels={false}
+          hideCopyButton
+          {...levaProps}
+        />
+      </div>
     </div>
   );
 };

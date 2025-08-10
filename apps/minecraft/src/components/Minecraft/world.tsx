@@ -1,6 +1,6 @@
 'use client';
 
-import { folder, useControls } from 'leva';
+import { folder, useControls, useCreateStore } from 'leva';
 import React, {
   useCallback,
   useEffect,
@@ -41,32 +41,36 @@ const World = ({ width, height }: { width: number; height: number }) => {
     setBlockInstanceIdAt,
   } = useWorld(width, height);
 
-  const { scale, magnitude, offset, seed } = useControls('Terrain', {
-    scale: {
-      value: 30,
-      min: 20,
-      max: 100,
-      step: 1,
+  const { scale, magnitude, offset, seed } = useControls(
+    'Terrain',
+    {
+      scale: {
+        value: 30,
+        min: 20,
+        max: 100,
+        step: 1,
+      },
+      magnitude: {
+        value: 0.5,
+        min: 0,
+        max: 1,
+        step: 0.01,
+      },
+      offset: {
+        value: 0.2,
+        min: 0,
+        max: 1,
+        step: 0.01,
+      },
+      seed: {
+        value: 123456789,
+        min: 0,
+        max: 1000000000,
+        step: 1,
+      },
     },
-    magnitude: {
-      value: 0.5,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-    offset: {
-      value: 0.2,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-    seed: {
-      value: 123456789,
-      min: 0,
-      max: 1000000000,
-      step: 1,
-    },
-  });
+    { collapsed: true }
+  );
 
   const resources = useMemo(() => getResourceEntries(), []);
   const resourceControlsSchema = useMemo(

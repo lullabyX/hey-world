@@ -7,7 +7,7 @@ import {
   Stats,
 } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useControls } from 'leva';
+import { useControls, useCreateStore } from 'leva';
 import React, { useRef } from 'react';
 import { Color } from 'three';
 import { cn } from '@lib/src';
@@ -21,6 +21,7 @@ const MinecraftSection = () => {
   const { Fullscreen, isFullscreen } = useFullscreen({
     sectionRef,
   });
+
   const { width, height } = useControls('World', {
     width: {
       value: 64,
@@ -35,6 +36,20 @@ const MinecraftSection = () => {
       step: 2,
     },
   });
+
+  const {
+    Grid,
+    Stats: StatsControl,
+    Camera: CameraControl,
+  } = useControls(
+    'Debug',
+    {
+      Grid: { value: false },
+      Stats: { value: false },
+      Camera: { value: false },
+    },
+    { collapsed: true }
+  );
 
   return (
     <section
@@ -60,18 +75,18 @@ const MinecraftSection = () => {
           receiveShadow: true,
         }}
       >
-        <gridHelper args={[128, 128]} />
+        {Grid && <gridHelper args={[128, 128]} />}
         <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
           <GizmoViewport />
         </GizmoHelper>
         <World width={width} height={height} />
         <Lights />
         <OrbitControls target={[0, 0, 0]} />
-        <Stats />
-        <CameraMonitor />
+        {StatsControl && <Stats />}
+        {CameraControl && <CameraMonitor />}
       </Canvas>
-      <Fullscreen />
       <LevaControl />
+      <Fullscreen className="left-0 top-0" />
     </section>
   );
 };

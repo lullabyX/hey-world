@@ -7,11 +7,9 @@ import { useCallback, useEffect, useState } from 'react';
 
 const useFullscreen = ({
   sectionRef,
-  className,
   defaultFullscreen = false,
 }: {
   sectionRef: React.RefObject<HTMLElement | null>;
-  className?: string;
   defaultFullscreen?: boolean;
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(defaultFullscreen);
@@ -43,8 +41,14 @@ const useFullscreen = ({
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
-  const Fullscreen = () => (
-    <div className={cn('absolute bottom-0 left-0 z-10 flex p-4', className)}>
+  const Fullscreen = ({
+    className,
+    ...restDivProps
+  }: React.ComponentProps<'div'>) => (
+    <div
+      className={cn('absolute bottom-0 left-0 z-10 flex p-4', className)}
+      {...restDivProps}
+    >
       <Button
         variant="outline"
         size="icon"
