@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas, useFrame } from '@react-three/fiber';
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useCallback, useLayoutEffect, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
@@ -33,13 +33,7 @@ const World = ({
     setBlockInstanceIdAt,
   } = useWorld(width, height);
 
-  const initializeTerrain = ({
-    width,
-    height,
-  }: {
-    width: number;
-    height: number;
-  }) => {
+  const initializeTerrain = useCallback(() => {
     terrainDataRef.current = [];
     for (let x = 0; x < width; x++) {
       const slice: Block[][] = [];
@@ -52,17 +46,9 @@ const World = ({
       }
       terrainDataRef.current.push(slice);
     }
-  };
+  }, [height, width, terrainDataRef]);
 
-  const generateTerrain = ({
-    scale,
-    magnitude,
-    offset,
-  }: {
-    scale: number;
-    magnitude: number;
-    offset: number;
-  }) => {
+  const generateTerrain = useCallback(() => {
     const simplexNoise = new SimplexNoise();
     for (let x = 0; x < width; x++) {
       for (let z = 0; z < width; z++) {
@@ -84,9 +70,9 @@ const World = ({
         }
       }
     }
-  };
+  }, [height, width, scale, magnitude, offset, setBlockTypeAt]);
 
-  const generateMesh = () => {
+  const generateMesh = useCallback(() => {
     if (!meshRef.current) {
       return;
     }
@@ -119,14 +105,21 @@ const World = ({
     if (meshRef.current.instanceColor) {
       meshRef.current.instanceColor.needsUpdate = true;
     }
-  };
+  }, [
+    height,
+    width,
+    getBlockAt,
+    isBlockVisible,
+    setBlockInstanceIdAt,
+    halfSize,
+  ]);
 
   // Initialize terrain and generate mesh when parameters change
   useLayoutEffect(() => {
-    initializeTerrain({ width, height });
-    generateTerrain({ scale, magnitude, offset });
+    initializeTerrain();
+    generateTerrain();
     generateMesh();
-  }, [width, height, scale, magnitude, offset]);
+  }, [initializeTerrain, generateTerrain, generateMesh]);
 
   // Use delta for frame-rate independent rotation
   // rotationSpeed is in radians per second
