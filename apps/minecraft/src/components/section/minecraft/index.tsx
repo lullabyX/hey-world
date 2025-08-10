@@ -7,7 +7,7 @@ import {
   Stats,
 } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useControls, useCreateStore } from 'leva';
+import { useControls } from 'leva';
 import React, { useRef } from 'react';
 import { Color } from 'three';
 import { cn } from '@lib/src';
