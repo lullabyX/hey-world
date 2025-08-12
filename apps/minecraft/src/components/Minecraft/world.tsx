@@ -1,6 +1,6 @@
 'use client';
 
-import { folder, useControls, useCreateStore } from 'leva';
+import { folder, useControls } from 'leva';
 import React, {
   useCallback,
   useEffect,

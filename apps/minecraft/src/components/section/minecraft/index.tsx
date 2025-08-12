@@ -1,13 +1,8 @@
 'use client';
 
-import {
-  GizmoHelper,
-  GizmoViewport,
-  OrbitControls,
-  Stats,
-} from '@react-three/drei';
+import { GizmoHelper, GizmoViewport, Stats } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useControls, useCreateStore } from 'leva';
+import { useControls } from 'leva';
 import React, { useRef } from 'react';
 import { Color } from 'three';
 import { cn } from '@lib/src';
@@ -15,6 +10,7 @@ import { useFullscreen } from '@hey-world/components';
 import CameraMonitor from '@/components/helpers/CameraMonitor';
 import LevaControl from '@/components/helpers/LevaControl';
 import { Lights, World } from '@/components/Minecraft';
+import Player from '@/components/Minecraft/player';
 
 const MinecraftSection = () => {
   const sectionRef = useRef<HTMLElement>(null);
@@ -81,7 +77,7 @@ const MinecraftSection = () => {
         </GizmoHelper>
         <World width={width} height={height} />
         <Lights />
-        <OrbitControls target={[0, 0, 0]} />
+        <Player />
         {StatsControl && <Stats />}
         {CameraControl && <CameraMonitor />}
       </Canvas>
