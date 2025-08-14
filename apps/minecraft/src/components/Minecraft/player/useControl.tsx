@@ -10,6 +10,7 @@ import { Mesh, PerspectiveCamera, Vector3 } from 'three';
 import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib';
 import useCollision from './useCollision';
 import CollisionDebug from './CollisionDebug';
+import PointDebug from './PointDebug';
 
 const useControl = ({
   camera,
@@ -42,9 +43,11 @@ const useControl = ({
   const { gl } = useThree();
 
   const {
-    broadPhaseCollisionsRef,
+    narrowPhaseCollisionsRef,
+    collisionPointsRef,
     getBroadPhaseCollisions,
     updatePlayerPosition,
+    getNarrowPhaseCollisions,
   } = useCollision({
     camera,
     playerRef,
@@ -183,6 +186,7 @@ const useControl = ({
     movePlayer(delta);
     updatePlayerPosition();
     getBroadPhaseCollisions();
+    getNarrowPhaseCollisions();
   });
 
   const controls = camera ? (
@@ -195,10 +199,11 @@ const useControl = ({
         domElement={gl.domElement}
       />
       <CollisionDebug
-        positionsRef={broadPhaseCollisionsRef}
+        positionsRef={narrowPhaseCollisionsRef}
         color="red"
         opacity={0.2}
       />
+      <PointDebug positionsRef={collisionPointsRef} wireframe />
     </group>
   ) : null;
 

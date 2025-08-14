@@ -1,6 +1,7 @@
 import { playerEyeHeight, playerHeight, playerRadius } from '@/lib/constants';
 import { dimensionsAtom } from '@/lib/store';
 import { TerrainType, useWorld } from '@/lib/world';
+import useLog from '@base/components/src/hooks/useLog';
 import { useAtom } from 'jotai';
 import { RefObject, useCallback, useRef } from 'react';
 import { Mesh, PerspectiveCamera, Vector3 } from 'three';
@@ -17,9 +18,13 @@ const useCollision = ({
   world: RefObject<TerrainType>;
 }) => {
   const broadPhaseCollisionsRef = useRef<Vector3[]>([]);
-  const lastBlockLogTimeRef = useRef(0);
+  const collisionPointsRef = useRef<Vector3[]>([]);
+  const narrowPhaseCollisionsRef = useRef<Vector3[]>([]);
 
   const [dimensions] = useAtom(dimensionsAtom);
+
+  const logBroadPhase = useLog();
+  const logNarrowPhase = useLog();
 
   const { getBlockAt } = useWorld(dimensions.width, dimensions.height, world);
 
@@ -74,16 +79,65 @@ const useCollision = ({
 
     broadPhaseCollisionsRef.current = newPositions;
 
-    const now = performance.now();
-    if (now - lastBlockLogTimeRef.current >= 500) {
-      lastBlockLogTimeRef.current = now;
-      console.log('broadPhaseCollisionsRef', broadPhaseCollisionsRef.current);
-    }
+    logBroadPhase('broadPhaseCollisions', broadPhaseCollisionsRef.current);
   }, [getBlockAt, playerRef]);
+
+  const getNarrowPhaseCollisions = useCallback(() => {
+    if (!playerRef.current) {
+      return;
+    }
+
+    const blockHalfSize = 0.5;
+    const playerHalfHeight = playerHeight / 2;
+
+    const playerPosition = playerRef.current.position;
+    const adjustedPlayerPositionY = playerPosition.y;
+
+    collisionPointsRef.current = [];
+    narrowPhaseCollisionsRef.current = [];
+
+    broadPhaseCollisionsRef.current.map((blockPosition) => {
+      const nearestX = Math.max(
+        blockPosition.x - blockHalfSize,
+        Math.min(playerPosition.x, blockPosition.x + blockHalfSize)
+      );
+      const nearestY = Math.max(
+        blockPosition.y - blockHalfSize,
+        Math.min(adjustedPlayerPositionY, blockPosition.y + blockHalfSize)
+      );
+      const nearestZ = Math.max(
+        blockPosition.z - blockHalfSize,
+        Math.min(playerPosition.z, blockPosition.z + blockHalfSize)
+      );
+
+      const dx = playerPosition.x - nearestX;
+      const dz = playerPosition.z - nearestZ;
+
+      const overlapXZ = dx * dx + dz * dz <= playerRadius * playerRadius;
+
+      const playerMaxY = adjustedPlayerPositionY + playerHalfHeight;
+      const playerMinY = adjustedPlayerPositionY - playerHalfHeight;
+
+      const overlapY = nearestY <= playerMaxY && nearestY >= playerMinY;
+
+      if (overlapXZ && overlapY) {
+        collisionPointsRef.current.push(
+          new Vector3(nearestX, nearestY, nearestZ)
+        );
+
+        narrowPhaseCollisionsRef.current.push(blockPosition);
+      }
+    });
+
+    logNarrowPhase('narrowPhaseCollisions', narrowPhaseCollisionsRef.current);
+  }, [playerRef, broadPhaseCollisionsRef, eyeOffset]);
 
   return {
     broadPhaseCollisionsRef,
+    narrowPhaseCollisionsRef,
+    collisionPointsRef,
     getBroadPhaseCollisions,
+    getNarrowPhaseCollisions,
     updatePlayerPosition,
   };
 };
