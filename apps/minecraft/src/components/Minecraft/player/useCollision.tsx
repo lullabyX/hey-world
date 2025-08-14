@@ -1,7 +1,7 @@
 import { playerEyeHeight, playerHeight, playerRadius } from '@/lib/constants';
 import { dimensionsAtom } from '@/lib/store';
 import { TerrainType, useWorld } from '@/lib/world';
-import useLog from '@base/components/src/hooks/useLog';
+import { useLog } from '@base/components/src';
 import { useAtom } from 'jotai';
 import { RefObject, useCallback, useRef } from 'react';
 import { Mesh, PerspectiveCamera, Vector3 } from 'three';

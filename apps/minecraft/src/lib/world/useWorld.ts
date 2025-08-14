@@ -41,7 +41,10 @@ export const useWorld = (
         return;
       }
       const existingBlock = getBlockAt(x, y, z);
-      terrainData.current[x]![y]![z] = createBlock(type, existingBlock?.instanceId);
+      terrainData.current[x]![y]![z] = createBlock(
+        type,
+        existingBlock?.instanceId
+      );
     },
     [isBound, getBlockAt, terrainData]
   );
