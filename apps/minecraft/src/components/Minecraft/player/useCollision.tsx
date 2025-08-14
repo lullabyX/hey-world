@@ -80,7 +80,7 @@ const useCollision = ({
     broadPhaseCollisionsRef.current = newPositions;
 
     logBroadPhase('broadPhaseCollisions', broadPhaseCollisionsRef.current);
-  }, [getBlockAt, playerRef]);
+  }, [getBlockAt, playerRef, logBroadPhase]);
 
   const getNarrowPhaseCollisions = useCallback(() => {
     if (!playerRef.current) {
@@ -130,7 +130,7 @@ const useCollision = ({
     });
 
     logNarrowPhase('narrowPhaseCollisions', narrowPhaseCollisionsRef.current);
-  }, [playerRef, broadPhaseCollisionsRef, eyeOffset]);
+  }, [playerRef, broadPhaseCollisionsRef, logNarrowPhase]);
 
   return {
     broadPhaseCollisionsRef,
