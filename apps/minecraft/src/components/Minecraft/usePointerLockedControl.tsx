@@ -28,7 +28,7 @@ const usePointerLockedControl = ({
       max: 20,
       step: 1,
     },
-    fly: false
+    fly: false,
   });
 
   const [isLocked, setIsLocked] = useState(false);
@@ -155,7 +155,9 @@ const usePointerLockedControl = ({
       controlsRef.current?.moveRight(playerPositionRef.current.x);
       controlsRef.current?.moveForward(playerPositionRef.current.z);
       if (fly) {
-        controlsRef.current?.getObject().translateY(playerPositionRef.current.y);
+        controlsRef.current
+          ?.getObject()
+          .translateY(playerPositionRef.current.y);
       }
     },
     [controlsRef, fly]
