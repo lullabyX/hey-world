@@ -10,3 +10,4 @@ export {
 export { default as ThemeSwitcher } from './theme/theme-switcher';
 export { default as ThemeProvider } from './theme/theme-provider';
 export { default as useFullscreen } from './hooks/useFullscreen';
+export { default as useLog } from './hooks/useLog';

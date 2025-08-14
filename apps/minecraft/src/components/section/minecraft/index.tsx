@@ -3,35 +3,47 @@
 import { GizmoHelper, GizmoViewport, Stats } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useControls } from 'leva';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Color } from 'three';
 import { cn } from '@lib/src';
 import { useFullscreen } from '@hey-world/components';
 import CameraMonitor from '@/components/helpers/CameraMonitor';
 import LevaControl from '@/components/helpers/LevaControl';
 import { Lights, World } from '@/components/Minecraft';
-import Player from '@/components/Minecraft/player';
+import Player from '@/components/Minecraft/player/player';
+import { TerrainType } from '@/lib/world';
+import { useAtom } from 'jotai';
+import { dimensionsAtom } from '@/lib/store';
 
 const MinecraftSection = () => {
   const sectionRef = useRef<HTMLElement>(null);
+
+  const terrainDataRef = useRef<TerrainType>([]);
+
   const { Fullscreen, isFullscreen } = useFullscreen({
     sectionRef,
   });
 
+  const [dimensions, setDimensions] = useAtom(dimensionsAtom);
+
   const { width, height } = useControls('World', {
     width: {
-      value: 64,
+      value: dimensions.width,
       min: 16,
       max: 128,
       step: 2,
     },
     height: {
-      value: 16,
+      value: dimensions.height,
       min: 4,
       max: 32,
       step: 2,
     },
   });
+
+  useEffect(() => {
+    setDimensions({ width, height });
+  }, [width, height, setDimensions]);
 
   const {
     Grid,
@@ -41,7 +53,7 @@ const MinecraftSection = () => {
     'Debug',
     {
       Grid: { value: false },
-      Stats: { value: false },
+      Stats: { value: true },
       Camera: { value: false },
     },
     { collapsed: true }
@@ -75,9 +87,9 @@ const MinecraftSection = () => {
         <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
           <GizmoViewport />
         </GizmoHelper>
-        <World width={width} height={height} />
+        <World width={width} height={height} terrainData={terrainDataRef} />
         <Lights />
-        <Player />
+        <Player world={terrainDataRef} />
         {StatsControl && <Stats />}
         {CameraControl && <CameraMonitor />}
       </Canvas>

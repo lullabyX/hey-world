@@ -1,12 +1,12 @@
 'use client';
 
 import { Canvas, useFrame } from '@react-three/fiber';
-import React, { useCallback, useLayoutEffect, useRef } from 'react';
+import React, { RefObject, useCallback, useLayoutEffect, useRef } from 'react';
 import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
 import { Block, createBlock } from '@/lib/block';
-import { useWorld } from '@/lib/world';
+import { TerrainType, useWorld } from '@/lib/world';
 
 const World = ({
   width,
@@ -14,24 +14,21 @@ const World = ({
   scale,
   magnitude,
   offset,
+  terrainDataRef,
 }: {
   width: number;
   height: number;
   scale: number;
   magnitude: number;
   offset: number;
+  terrainDataRef: RefObject<TerrainType>;
 }) => {
   const halfSize = Math.floor(width / 2);
   const totalSize = width * width * height;
 
   const meshRef = useRef<InstancedMesh>(null);
-  const {
-    terrainDataRef,
-    getBlockAt,
-    setBlockTypeAt,
-    isBlockVisible,
-    setBlockInstanceIdAt,
-  } = useWorld(width, height);
+  const { getBlockAt, setBlockTypeAt, isBlockVisible, setBlockInstanceIdAt } =
+    useWorld(width, height, terrainDataRef);
 
   const initializeTerrain = useCallback(() => {
     terrainDataRef.current = [];
@@ -159,6 +156,7 @@ const MinecraftWorld = ({
   offset: number;
 } & React.HTMLAttributes<HTMLDivElement>) => {
   const worldRef = useRef<HTMLDivElement>(null);
+  const terrainDataRef = useRef<TerrainType>([]);
 
   return (
     <div ref={worldRef} className={cn('relative flex', className)} {...rest}>
@@ -179,6 +177,7 @@ const MinecraftWorld = ({
           scale={scale}
           magnitude={magnitude}
           offset={offset}
+          terrainDataRef={terrainDataRef}
         />
         <directionalLight position={[1, 1, 1]} intensity={0.8} />
         <directionalLight position={[-1, 1, -0.5]} intensity={0.4} />
