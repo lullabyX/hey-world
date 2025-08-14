@@ -1,4 +1,4 @@
-import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import { Html, OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { RefObject, useRef } from 'react';
 import { Mesh, PerspectiveCamera as PerspectiveCameraType } from 'three';
 import useControl from './useControl';
@@ -36,6 +36,13 @@ const PlayerControls = ({ world }: { world: RefObject<TerrainType> }) => {
         fov={75}
         makeDefault={isLocked}
       ></PerspectiveCamera>
+      <Html>
+        <div className="flex flex-row">
+          <div>X: {cameraRef.current?.position.x.toFixed(2)}</div>
+          <div>Y: {cameraRef.current?.position.y.toFixed(2)}</div>
+          <div>Z: {cameraRef.current?.position.z.toFixed(2)}</div>
+        </div>
+      </Html>
       {Player && cameraRef.current && (
         <cameraHelper args={[cameraRef.current]} />
       )}

@@ -22,7 +22,7 @@ const useCollision = ({
   const [dimensions] = useAtom(dimensionsAtom);
 
   const { getBlockAt } = useWorld(dimensions.width, dimensions.height, world);
-  
+
   const eyeOffset = playerHeight / 2 - playerEyeHeight;
 
   const updatePlayerPosition = useCallback(() => {
@@ -46,19 +46,19 @@ const useCollision = ({
     const playerExtents = {
       x: {
         min: Math.floor(player.position.x - playerRadius),
-        max: Math.max(player.position.x + playerRadius),
+        max: Math.ceil(player.position.x + playerRadius),
       },
       y: {
-        min: Math.floor(player.position.y - playerHalfHeight - eyeOffset),
-        max: Math.max(player.position.y + playerHalfHeight - eyeOffset),
+        min: Math.floor(player.position.y - playerHalfHeight),
+        max: Math.ceil(player.position.y + playerHalfHeight),
       },
       z: {
         min: Math.floor(player.position.z - playerRadius),
-        max: Math.max(player.position.z + playerRadius),
+        max: Math.ceil(player.position.z + playerRadius),
       },
     };
 
-    broadPhaseCollisionsRef.current = [];
+    const newPositions: Vector3[] = [];
 
     for (let x = playerExtents.x.min; x <= playerExtents.x.max; x++) {
       for (let y = playerExtents.y.min; y <= playerExtents.y.max; y++) {
@@ -66,11 +66,13 @@ const useCollision = ({
           const block = getBlockAt(x, y, z);
 
           if (block && block.type !== 'empty') {
-            broadPhaseCollisionsRef.current.push(new Vector3(x, y, z));
+            newPositions.push(new Vector3(x, y, z));
           }
         }
       }
     }
+
+    broadPhaseCollisionsRef.current = newPositions;
 
     const now = performance.now();
     if (now - lastBlockLogTimeRef.current >= 500) {
@@ -78,6 +80,7 @@ const useCollision = ({
       console.log('broadPhaseCollisionsRef', broadPhaseCollisionsRef.current);
     }
   }, [getBlockAt, eyeOffset, playerRef]);
+
   return {
     broadPhaseCollisionsRef,
     getBroadPhaseCollisions,

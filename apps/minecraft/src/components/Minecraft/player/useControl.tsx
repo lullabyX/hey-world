@@ -9,6 +9,7 @@ import type { ForwardedRef, RefObject } from 'react';
 import { Mesh, PerspectiveCamera, Vector3 } from 'three';
 import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib';
 import useCollision from './useCollision';
+import CollisionDebug from './CollisionDebug';
 
 const useControl = ({
   camera,
@@ -40,7 +41,11 @@ const useControl = ({
 
   const { gl } = useThree();
 
-  const { getBroadPhaseCollisions, updatePlayerPosition } = useCollision({
+  const {
+    broadPhaseCollisionsRef,
+    getBroadPhaseCollisions,
+    updatePlayerPosition,
+  } = useCollision({
     camera,
     playerRef,
     controlsRef,
@@ -181,13 +186,20 @@ const useControl = ({
   });
 
   const controls = camera ? (
-    <PointerLockControls
-      ref={controlsRef}
-      selector="#__no_pointer_lock_controls__"
-      camera={camera}
-      onUnlock={handleUnlock}
-      domElement={gl.domElement}
-    />
+    <group>
+      <PointerLockControls
+        ref={controlsRef}
+        selector="#__no_pointer_lock_controls__"
+        camera={camera}
+        onUnlock={handleUnlock}
+        domElement={gl.domElement}
+      />
+      <CollisionDebug
+        positionsRef={broadPhaseCollisionsRef}
+        color="red"
+        opacity={0.2}
+      />
+    </group>
   ) : null;
 
   return {
