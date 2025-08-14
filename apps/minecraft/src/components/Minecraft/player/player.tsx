@@ -1,7 +1,7 @@
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { RefObject, useRef } from 'react';
 import { Mesh, PerspectiveCamera as PerspectiveCameraType } from 'three';
-import usePointerLockedControl from './usePointerLockedControl';
+import useControl from './useControl';
 import { useControls } from 'leva';
 import { TerrainType } from '@/lib/world';
 import { playerHeight, playerRadius } from '@/lib/constants';
@@ -20,7 +20,7 @@ const PlayerControls = ({ world }: { world: RefObject<TerrainType> }) => {
     }
   );
 
-  const { isLocked, controls } = usePointerLockedControl({
+  const { isLocked, controls } = useControl({
     camera: cameraRef.current!,
     playerRef,
     world,

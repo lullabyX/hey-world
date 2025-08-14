@@ -1,2 +1,2 @@
 export { default as Player } from './player';
-export { default as usePointerLockedControl } from './usePointerLockedControl';
+export { default as usePointerLockedControl } from './useControl';
