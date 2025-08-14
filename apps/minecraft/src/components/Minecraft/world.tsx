@@ -2,6 +2,7 @@
 
 import { folder, useControls } from 'leva';
 import React, {
+  RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -19,12 +20,19 @@ import {
 import { createAtlasOnBeforeCompile, loadTextureTiles } from '@/lib/texture';
 import { useAtlas } from '@/lib/texture';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
-import { Block, createBlock, getResourceEntries } from '@/lib/block';
-import { useWorld } from '@/lib/world';
+import { Block, getResourceEntries } from '@/lib/block';
+import { TerrainType, useWorld } from '@/lib/world';
 import { RandomNumberGenerator } from '@/helpers/random-number-generator';
 
-const World = ({ width, height }: { width: number; height: number }) => {
-  const halfSize = Math.floor(width / 2);
+const World = ({
+  width,
+  height,
+  terrainData,
+}: {
+  width: number;
+  height: number;
+  terrainData: RefObject<TerrainType>;
+}) => {
   const totalSize = width * width * height;
 
   const meshRef = useRef<InstancedMesh>(null);
@@ -34,12 +42,12 @@ const World = ({ width, height }: { width: number; height: number }) => {
     1
   );
   const {
-    terrainDataRef,
     getBlockAt,
     setBlockTypeAt,
     isBlockVisible,
     setBlockInstanceIdAt,
-  } = useWorld(width, height);
+    initializeTerrain,
+  } = useWorld(width, height, terrainData);
 
   const { scale, magnitude, offset, seed } = useControls(
     'Terrain',
@@ -121,21 +129,6 @@ const World = ({ width, height }: { width: number; height: number }) => {
     collapsed: true,
   }) as Record<string, number>;
   const resourceControlsKey = JSON.stringify(resourceControls);
-
-  const initializeTerrain = useCallback(() => {
-    terrainDataRef.current = [];
-    for (let x = 0; x < width; x++) {
-      const slice: Block[][] = [];
-      for (let y = 0; y < height; y++) {
-        const row: Block[] = [];
-        for (let z = 0; z < width; z++) {
-          row.push(createBlock('empty'));
-        }
-        slice.push(row);
-      }
-      terrainDataRef.current.push(slice);
-    }
-  }, [terrainDataRef, width, height]);
 
   // Inject shader to sample atlas with per-face offsets
   useEffect(() => {
@@ -252,7 +245,7 @@ const World = ({ width, height }: { width: number; height: number }) => {
           const _isBlockVisible = isBlockVisible(x, y, z);
           if (notEmptyBlock && _isBlockVisible) {
             // Center the world around origin
-            matrix.setPosition(x - halfSize + 0.5, y + 0.5, z - halfSize + 0.5);
+            matrix.setPosition(x, y, z);
 
             const instanceId = meshRef.current.count;
             setBlockInstanceIdAt(x, y, z, instanceId);
@@ -310,7 +303,6 @@ const World = ({ width, height }: { width: number; height: number }) => {
     getBlockAt,
     setBlockInstanceIdAt,
     isBlockVisible,
-    halfSize,
     totalSize,
     atlas,
     atlasScaleRef,

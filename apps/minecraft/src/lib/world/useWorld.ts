@@ -1,14 +1,28 @@
-import { useRef, useCallback } from 'react';
+import { RefObject, useCallback } from 'react';
 import { Block, BlockType, createBlock } from '@/lib/block';
 
-export const useWorld = (width: number, height: number) => {
-  const terrainDataRef = useRef<Block[][][]>([]);
+export type TerrainType = Block[][][];
 
+export const useWorld = (
+  width: number,
+  height: number,
+  terrainData: RefObject<TerrainType>
+) => {
   const isBound = useCallback(
     (x: number, y: number, z: number) => {
-      return x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < width;
+      return (
+        x >= 0 &&
+        x < width &&
+        y >= 0 &&
+        y < height &&
+        z >= 0 &&
+        z < width &&
+        terrainData.current[x] &&
+        terrainData.current[x][y] &&
+        terrainData.current[x][y][z]
+      );
     },
-    [width, height]
+    [width, height, terrainData]
   );
 
   const getBlockAt = useCallback(
@@ -16,9 +30,9 @@ export const useWorld = (width: number, height: number) => {
       if (!isBound(x, y, z)) {
         return null;
       }
-      return terrainDataRef.current[x]![y]![z]!;
+      return terrainData.current[x]![y]![z]!;
     },
-    [isBound]
+    [isBound, terrainData]
   );
 
   const setBlockTypeAt = useCallback(
@@ -27,12 +41,9 @@ export const useWorld = (width: number, height: number) => {
         return;
       }
       const existingBlock = getBlockAt(x, y, z);
-      terrainDataRef.current[x]![y]![z] = createBlock(
-        type,
-        existingBlock?.instanceId
-      );
+      terrainData.current[x]![y]![z] = createBlock(type, existingBlock?.instanceId);
     },
-    [isBound, getBlockAt]
+    [isBound, getBlockAt, terrainData]
   );
 
   const setBlockInstanceIdAt = useCallback(
@@ -40,9 +51,9 @@ export const useWorld = (width: number, height: number) => {
       if (!isBound(x, y, z)) {
         return;
       }
-      terrainDataRef.current[x]![y]![z]!.instanceId = instanceId;
+      terrainData.current[x]![y]![z]!.instanceId = instanceId;
     },
-    [isBound]
+    [isBound, terrainData]
   );
 
   const isBlockVisible = useCallback(
@@ -76,7 +87,7 @@ export const useWorld = (width: number, height: number) => {
   );
 
   const initializeTerrain = useCallback(() => {
-    terrainDataRef.current = [];
+    terrainData.current = [];
     for (let x = 0; x < width; x++) {
       const slice: Block[][] = [];
       for (let y = 0; y < height; y++) {
@@ -86,12 +97,11 @@ export const useWorld = (width: number, height: number) => {
         }
         slice.push(row);
       }
-      terrainDataRef.current.push(slice);
+      terrainData.current.push(slice);
     }
-  }, [width, height]);
+  }, [width, height, terrainData]);
 
   return {
-    terrainDataRef,
     isBound,
     getBlockAt,
     setBlockTypeAt,

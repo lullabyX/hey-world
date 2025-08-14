@@ -1,39 +1,56 @@
 'use client';
 
+import { TerrainType, useWorld } from '@/lib/world';
 import { PointerLockControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useControls } from 'leva';
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
-import type { ForwardedRef } from 'react';
-import { PerspectiveCamera, Vector3 } from 'three';
+import type { ForwardedRef, RefObject } from 'react';
+import { Mesh, PerspectiveCamera, Vector3 } from 'three';
 import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib';
+import { useAtom } from 'jotai';
+import { dimensionsAtom } from '@/lib/store';
+import { playerEyeHeight, playerHeight, playerRadius } from '@/lib/constants';
 
 const usePointerLockedControl = ({
   camera,
+  playerRef,
+  world,
 }: {
-  camera: PerspectiveCamera | null;
+  camera: PerspectiveCamera;
+  playerRef: RefObject<Mesh | null>;
+  world: RefObject<TerrainType>;
 }) => {
+  const { speed, fly } = useControls('Player', {
+    speed: {
+      value: 5,
+      min: 1,
+      max: 10,
+      step: 1,
+    },
+    fly: false,
+  });
+
   const controlsRef = useRef<PointerLockControlsImpl>(null);
 
   const pointerLockControlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pointerLockReadyRef = useRef(true);
 
-  const playerPositionRef = useRef<Vector3>(new Vector3(0, 10, 10));
-  const playerMovementRef = useRef(new Vector3(0, 0, 0));
-
-  const { speed, fly } = useControls('Player', {
-    speed: {
-      value: 10,
-      min: 1,
-      max: 20,
-      step: 1,
-    },
-    fly: false
-  });
+  const inputRef = useRef<Vector3>(new Vector3(0, 0, 0));
+  const playerVelocityRef = useRef(new Vector3(0, 0, 0));
+  const lastBlockLogTimeRef = useRef(0);
 
   const [isLocked, setIsLocked] = useState(false);
 
   const { gl } = useThree();
+
+  const [dimensions] = useAtom(dimensionsAtom);
+
+  const { getBlockAt } = useWorld(dimensions.width, dimensions.height, world);
+
+  const eyeOffset = playerHeight / 2 - playerEyeHeight;
+
+  const broadPhaseCollisions = useRef<Vector3[]>([]);
 
   useEffect(() => {
     return () => {
@@ -82,29 +99,30 @@ const usePointerLockedControl = ({
       switch (e.key) {
         case 'w':
         case 'ArrowUp':
-          playerMovementRef.current.z = speed;
+          playerVelocityRef.current.z = speed;
           break;
         case 's':
         case 'ArrowDown':
-          playerMovementRef.current.z = -speed;
+          playerVelocityRef.current.z = -speed;
           break;
         case 'a':
         case 'ArrowLeft':
-          playerMovementRef.current.x = -speed;
+          playerVelocityRef.current.x = -speed;
           break;
         case 'd':
         case 'ArrowRight':
-          playerMovementRef.current.x = speed;
+          playerVelocityRef.current.x = speed;
           break;
         case ' ':
-          playerMovementRef.current.y = speed;
+          playerVelocityRef.current.y = speed;
           break;
         case 'Shift':
-          playerMovementRef.current.y = -speed;
+          playerVelocityRef.current.y = -speed;
           break;
         case 'r':
           camera?.position.set(0, 10, 10);
-          playerMovementRef.current = new Vector3(0, 0, 0);
+          playerVelocityRef.current = new Vector3(0, 0, 0);
+          inputRef.current = new Vector3(0, 10, 10);
           break;
       }
     },
@@ -119,46 +137,102 @@ const usePointerLockedControl = ({
       switch (e.key) {
         case 'w':
         case 'ArrowUp':
-          playerMovementRef.current.z = 0;
+          playerVelocityRef.current.z = 0;
           break;
         case 's':
         case 'ArrowDown':
-          playerMovementRef.current.z = 0;
+          playerVelocityRef.current.z = 0;
           break;
         case 'a':
         case 'ArrowLeft':
-          playerMovementRef.current.x = 0;
+          playerVelocityRef.current.x = 0;
           break;
         case 'd':
         case 'ArrowRight':
-          playerMovementRef.current.x = 0;
+          playerVelocityRef.current.x = 0;
           break;
         case ' ':
-          playerMovementRef.current.y = 0;
+          playerVelocityRef.current.y = 0;
           break;
         case 'Shift':
-          playerMovementRef.current.y = 0;
+          playerVelocityRef.current.y = 0;
           break;
       }
     },
     [controlsRef]
   );
 
+  const updatePlayerPosition = useCallback(() => {
+    if (!controlsRef.current || !playerRef.current) {
+      return;
+    }
+    playerRef.current.position.set(
+      controlsRef.current.getObject().position.x,
+      controlsRef.current.getObject().position.y - eyeOffset,
+      controlsRef.current.getObject().position.z
+    );
+  }, [playerRef, controlsRef, eyeOffset]);
+
+  const getBroadPhaseCollisions = useCallback(() => {
+    if (!playerRef.current) {
+      return;
+    }
+
+    const player = playerRef.current;
+    const playerHalfHeight = playerHeight / 2;
+    const playerExtents = {
+      x: {
+        min: Math.floor(player.position.x - playerRadius),
+        max: Math.max(player.position.x + playerRadius),
+      },
+      y: {
+        min: Math.floor(player.position.y - playerHalfHeight + eyeOffset),
+        max: Math.max(player.position.y + playerHalfHeight + eyeOffset),
+      },
+      z: {
+        min: Math.floor(player.position.z - playerRadius),
+        max: Math.max(player.position.z + playerRadius),
+      },
+    };
+
+    broadPhaseCollisions.current = [];
+
+    for (let x = playerExtents.x.min; x <= playerExtents.x.max; x++) {
+      for (let y = playerExtents.y.min; y <= playerExtents.y.max; y++) {
+        for (let z = playerExtents.z.min; z <= playerExtents.z.max; z++) {
+          const block = getBlockAt(x, y, z);
+
+          if (block && block.type !== 'empty') {
+            broadPhaseCollisions.current.push(new Vector3(x, y, z));
+          }
+        }
+      }
+    }
+
+    const now = performance.now();
+    if (now - lastBlockLogTimeRef.current >= 500) {
+      lastBlockLogTimeRef.current = now;
+      console.log('broadPhaseCollisions', broadPhaseCollisions.current);
+    }
+  }, [playerRef, getBlockAt, eyeOffset]);
+
   const movePlayer = useCallback(
     (delta: number) => {
       if (!controlsRef.current || !controlsRef.current.isLocked) {
         return;
       }
-      playerPositionRef.current.x = playerMovementRef.current.x * delta;
-      playerPositionRef.current.z = playerMovementRef.current.z * delta;
-      playerPositionRef.current.y = playerMovementRef.current.y * delta;
-      controlsRef.current?.moveRight(playerPositionRef.current.x);
-      controlsRef.current?.moveForward(playerPositionRef.current.z);
+      inputRef.current.x = playerVelocityRef.current.x * delta;
+      inputRef.current.z = playerVelocityRef.current.z * delta;
+      inputRef.current.y = playerVelocityRef.current.y * delta;
+      controlsRef.current?.moveRight(inputRef.current.x);
+      controlsRef.current?.moveForward(inputRef.current.z);
+      updatePlayerPosition();
       if (fly) {
-        controlsRef.current?.getObject().translateY(playerPositionRef.current.y);
+        controlsRef.current?.getObject().translateY(inputRef.current.y);
       }
+      getBroadPhaseCollisions();
     },
-    [controlsRef, fly]
+    [controlsRef, fly, getBroadPhaseCollisions, updatePlayerPosition]
   );
 
   useEffect(() => {
@@ -189,7 +263,6 @@ const usePointerLockedControl = ({
     handleUnlock,
     controls,
     controlsRef,
-    playerPosition: playerPositionRef.current,
   };
 };
 

@@ -1,11 +1,14 @@
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
-import { useRef } from 'react';
-import { PerspectiveCamera as PerspectiveCameraType } from 'three';
+import { RefObject, useRef } from 'react';
+import { Mesh, PerspectiveCamera as PerspectiveCameraType } from 'three';
 import usePointerLockedControl from './usePointerLockedControl';
 import { useControls } from 'leva';
+import { TerrainType } from '@/lib/world';
+import { playerHeight, playerRadius } from '@/lib/constants';
 
-const PlayerControls = () => {
+const PlayerControls = ({ world }: { world: RefObject<TerrainType> }) => {
   const cameraRef = useRef<PerspectiveCameraType>(null);
+  const playerRef = useRef<Mesh>(null);
 
   const { Player } = useControls(
     'Debug',
@@ -18,7 +21,9 @@ const PlayerControls = () => {
   );
 
   const { isLocked, controls } = usePointerLockedControl({
-    camera: cameraRef.current,
+    camera: cameraRef.current!,
+    playerRef,
+    world,
   });
 
   return (
@@ -36,6 +41,10 @@ const PlayerControls = () => {
       )}
       {controls}
       <OrbitControls target={[0, 0, 0]} enabled={!isLocked} />
+      <mesh ref={playerRef} position={[0, 10, 10]}>
+        <cylinderGeometry args={[playerRadius, playerRadius, playerHeight]} />
+        <meshBasicMaterial color="white" wireframe />
+      </mesh>
     </group>
   );
 };
