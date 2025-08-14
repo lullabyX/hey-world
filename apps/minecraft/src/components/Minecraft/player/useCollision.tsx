@@ -79,7 +79,7 @@ const useCollision = ({
       lastBlockLogTimeRef.current = now;
       console.log('broadPhaseCollisionsRef', broadPhaseCollisionsRef.current);
     }
-  }, [getBlockAt, eyeOffset, playerRef]);
+  }, [getBlockAt, playerRef]);
 
   return {
     broadPhaseCollisionsRef,
