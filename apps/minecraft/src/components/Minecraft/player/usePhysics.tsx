@@ -70,12 +70,14 @@ const usePhysics = ({
       }
 
       const playerPosition = playerRef.current.position;
+      const adjustedPlayerY = adjustedPlayerYPosition(playerPosition.y);
+      const playerRadiusSquared = playerRadius * playerRadius;
 
       const dx = p.x - playerPosition.x;
-      const dy = p.y - adjustedPlayerYPosition(playerPosition.y);
+      const dy = p.y - adjustedPlayerY;
       const dz = p.z - playerPosition.z;
 
-      const isOverlapXZ = dx * dx + dz * dz < playerRadius * playerRadius;
+      const isOverlapXZ = dx * dx + dz * dz < playerRadiusSquared;
       const isOverlapY = Math.abs(dy) < playerHalfHeight;
 
       return isOverlapXZ && isOverlapY;
@@ -127,11 +129,12 @@ const usePhysics = ({
     collisionsRef.current = [];
     narrowPhaseCollisionsRef.current = [];
 
-    broadPhaseCollisionsRef.current.map((blockPosition) => {
+    for (const blockPosition of broadPhaseCollisionsRef.current) {
       if (!playerRef.current) {
         return;
       }
       const playerPosition = playerRef.current.position;
+      const playerAdjustedY = adjustedPlayerYPosition(playerPosition.y);
 
       const nearestX = Math.max(
         blockPosition.x - blockHalfSize,
@@ -139,10 +142,7 @@ const usePhysics = ({
       );
       const nearestY = Math.max(
         blockPosition.y - blockHalfSize,
-        Math.min(
-          adjustedPlayerYPosition(playerPosition.y),
-          blockPosition.y + blockHalfSize
-        )
+        Math.min(playerAdjustedY, blockPosition.y + blockHalfSize)
       );
       const nearestZ = Math.max(
         blockPosition.z - blockHalfSize,
@@ -155,7 +155,7 @@ const usePhysics = ({
         narrowPhaseCollisionsRef.current.push(blockPosition);
 
         const dx = nearestX - playerPosition.x;
-        const dy = nearestY - adjustedPlayerYPosition(playerPosition.y);
+        const dy = nearestY - playerAdjustedY;
         const dz = nearestZ - playerPosition.z;
 
         const overlapXZ = playerRadius - Math.sqrt(dx * dx + dz * dz);
@@ -178,7 +178,7 @@ const usePhysics = ({
           point: nearestPoint,
         });
       }
-    });
+    }
   }, [
     playerHalfHeight,
     playerRef,
@@ -198,6 +198,9 @@ const usePhysics = ({
 
     const collisions = collisionsRef.current;
     collisions.sort((a, b) => a.overlap - b.overlap);
+    const yaw = playerRef.current.rotation.y;
+    const yawEuler = new Euler(0, yaw, 0);
+    const minusYawEuler = new Euler(0, -yaw, 0);
 
     for (const collision of collisions) {
       if (!isPointInBoundingBox(collision.point)) {
@@ -212,13 +215,13 @@ const usePhysics = ({
 
       const velocityMagnitude = playerVelocityRef.current
         .clone()
-        .applyEuler(new Euler(0, playerRef.current.rotation.y, 0))
+        .applyEuler(yawEuler)
         .dot(collision.normal);
       const velocityAdjustment = collision.normal
         .clone()
         .multiplyScalar(velocityMagnitude)
         .negate()
-        .applyEuler(new Euler(0, -playerRef.current.rotation.y, 0));
+        .applyEuler(minusYawEuler);
       playerVelocityRef.current.add(velocityAdjustment);
     }
   }, [playerRef, playerVelocityRef, isPointInBoundingBox]);
