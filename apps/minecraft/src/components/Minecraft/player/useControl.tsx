@@ -30,6 +30,10 @@ const useControl = ({
     },
   });
 
+  const gravity = 32;
+  const jumpSpeed = 10;
+  const onGroundRef = useRef(false);
+
   const controlsRef = useRef<PointerLockControlsImpl>(null);
 
   const pointerLockControlTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -42,18 +46,16 @@ const useControl = ({
 
   const { gl } = useThree();
 
-  const {
-    narrowPhaseCollisionsRef,
-    collisionsRef,
-    updatePlayerPosition,
-    detectCollision,
-    handleCollision,
-  } = useCollision({
-    playerRef,
-    controlsRef,
-    playerBodyRef,
-    world,
-  });
+  const { narrowPhaseCollisionsRef, collisionsRef, updatePlayer } =
+    useCollision({
+      inputRef,
+      playerRef,
+      controlsRef,
+      playerBodyRef,
+      playerVelocityRef,
+      world,
+      onGroundRef,
+    });
 
   useEffect(() => {
     return () => {
@@ -102,30 +104,29 @@ const useControl = ({
       switch (e.key) {
         case 'w':
         case 'ArrowUp':
-          playerVelocityRef.current.z = speed;
+          inputRef.current.z = speed;
           break;
         case 's':
         case 'ArrowDown':
-          playerVelocityRef.current.z = -speed;
+          inputRef.current.z = -speed;
           break;
         case 'a':
         case 'ArrowLeft':
-          playerVelocityRef.current.x = -speed;
+          inputRef.current.x = -speed;
           break;
         case 'd':
         case 'ArrowRight':
-          playerVelocityRef.current.x = speed;
+          inputRef.current.x = speed;
           break;
         case ' ':
-          playerVelocityRef.current.y = speed;
-          break;
-        case 'Shift':
-          playerVelocityRef.current.y = -speed;
+          if (onGroundRef.current) {
+            playerVelocityRef.current.y = 10;
+          }
           break;
         case 'r':
           playerRef.current?.position.set(0, 10, 10);
+          inputRef.current = new Vector3(0, 0, 0);
           playerVelocityRef.current = new Vector3(0, 0, 0);
-          inputRef.current = new Vector3(0, 10, 10);
           break;
       }
     },
@@ -139,38 +140,21 @@ const useControl = ({
     switch (e.key) {
       case 'w':
       case 'ArrowUp':
-        playerVelocityRef.current.z = 0;
+        inputRef.current.z = 0;
         break;
       case 's':
       case 'ArrowDown':
-        playerVelocityRef.current.z = 0;
+        inputRef.current.z = 0;
         break;
       case 'a':
       case 'ArrowLeft':
-        playerVelocityRef.current.x = 0;
+        inputRef.current.x = 0;
         break;
       case 'd':
       case 'ArrowRight':
-        playerVelocityRef.current.x = 0;
-        break;
-      case ' ':
-        playerVelocityRef.current.y = 0;
-        break;
-      case 'Shift':
-        playerVelocityRef.current.y = 0;
+        inputRef.current.x = 0;
         break;
     }
-  }, []);
-
-  const movePlayer = useCallback((delta: number) => {
-    if (!controlsRef.current || !controlsRef.current.isLocked) {
-      return;
-    }
-    inputRef.current.x = playerVelocityRef.current.x * delta;
-    inputRef.current.z = playerVelocityRef.current.z * delta;
-    inputRef.current.y = playerVelocityRef.current.y * delta;
-    controlsRef.current?.moveRight(inputRef.current.x);
-    controlsRef.current?.moveForward(inputRef.current.z);
   }, []);
 
   useEffect(() => {
@@ -182,11 +166,16 @@ const useControl = ({
     };
   }, [handleKeyDown, handleKeyUp]);
 
+  const applyInputs = useCallback((dt: number) => {
+    if (!controlsRef.current?.isLocked) {
+      return;
+    }
+    playerVelocityRef.current.y -= gravity * dt;
+    updatePlayer(dt);
+  }, []);
+
   useFrame((_, delta) => {
-    movePlayer(delta);
-    updatePlayerPosition();
-    detectCollision();
-    handleCollision();
+    applyInputs(delta);
   });
 
   const controls = playerRef.current ? (
