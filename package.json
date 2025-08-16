@@ -31,7 +31,8 @@
     "remove:components": "pnpm remove $1 --filter @hey-world/components",
     "add:ui": "pnpm add $1 --filter @hey-world/ui $2",
     "up:ui": "pnpm up $1 --filter @hey-world/ui",
-    "remove:ui": "pnpm remove $1 --filter @hey-world/ui"
+    "remove:ui": "pnpm remove $1 --filter @hey-world/ui",
+    "prepush": "pnpm lint && pnpm tsc && pnpm format"
   },
   "devDependencies": {
     "@types/node": "^20.17.17",
