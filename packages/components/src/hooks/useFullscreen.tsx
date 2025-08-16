@@ -5,42 +5,76 @@ import { Button } from '@hey-world/ui';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const useFullscreen = ({
-  sectionRef,
-  defaultFullscreen = false,
-}: {
+type UseFullscreenOptionsByRef = {
   sectionRef: React.RefObject<HTMLElement | null>;
   defaultFullscreen?: boolean;
-}) => {
+  id?: never;
+};
+
+type UseFullscreenOptionsById = {
+  id: string;
+  defaultFullscreen?: boolean;
+  sectionRef?: never;
+};
+
+type UseFullscreenOptions =
+  | UseFullscreenOptionsByRef
+  | UseFullscreenOptionsById;
+
+const useFullscreen = (options: UseFullscreenOptions) => {
+  const { defaultFullscreen = false } = options;
+
+  const hasRef = 'sectionRef' in options && options.sectionRef !== undefined;
+  const hasId = 'id' in options && options.id !== undefined;
+
+  if ((hasRef && hasId) || (!hasRef && !hasId)) {
+    throw new Error(
+      'useFullscreen: Provide either sectionRef or id, but not both.'
+    );
+  }
+
   const [isFullscreen, setIsFullscreen] = useState(defaultFullscreen);
 
+  const getTargetElement = useCallback((): HTMLElement | null => {
+    if (hasId) {
+      return (
+        document.getElementById((options as UseFullscreenOptionsById).id) ??
+        null
+      );
+    }
+    const ref = (options as UseFullscreenOptionsByRef).sectionRef;
+    return ref?.current ?? null;
+  }, [hasId, options]);
+
   const handleFullscreen = useCallback(async () => {
-    if (!sectionRef.current) return;
+    const target = getTargetElement();
+    if (!target) return;
 
     try {
-      if (!document.fullscreenElement) {
-        await sectionRef.current.requestFullscreen();
-        setIsFullscreen(true);
-      } else {
+      if (document.fullscreenElement === target) {
         await document.exitFullscreen();
         setIsFullscreen(false);
+      } else {
+        await target.requestFullscreen();
+        setIsFullscreen(true);
       }
     } catch (error) {
       console.error('Error toggling fullscreen:', error);
     }
-  }, []);
+  }, [getTargetElement]);
 
   // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const target = getTargetElement();
+      setIsFullscreen(document.fullscreenElement === target);
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, []);
+  }, [getTargetElement]);
   const Fullscreen = ({
     className,
     ...restDivProps
@@ -64,7 +98,7 @@ const useFullscreen = ({
     </div>
   );
 
-  return { Fullscreen, isFullscreen };
+  return { Fullscreen, isFullscreen, handleFullscreen };
 };
 
 export default useFullscreen;

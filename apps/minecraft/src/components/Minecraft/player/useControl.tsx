@@ -11,6 +11,7 @@ import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdli
 import useCollision from './usePhysics';
 import CollisionDebug from './CollisionDebug';
 import PointDebug from './PointDebug';
+import { useFullscreen } from '@base/components/src';
 
 const useControl = ({
   playerRef,
@@ -43,6 +44,10 @@ const useControl = ({
 
   const [isLocked, setIsLocked] = useState(false);
 
+  const { handleFullscreen } = useFullscreen({
+    id: 'minecraft-main-canvas',
+  });
+
   const { gl } = useThree();
 
   const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } =
@@ -56,7 +61,7 @@ const useControl = ({
       onGroundRef,
     });
 
-  const triggerLock = useCallback(() => {
+  const handleLock = useCallback(() => {
     if (!controlsRef.current || controlsRef.current.isLocked) {
       return;
     }
@@ -65,6 +70,7 @@ const useControl = ({
     }
     controlsRef.current.lock();
     setIsLocked(true);
+    handleFullscreen();
     return () => {
       if (pointerLockControlTimeoutRef.current) {
         clearTimeout(pointerLockControlTimeoutRef.current);
@@ -79,6 +85,7 @@ const useControl = ({
     pointerLockReadyRef.current = false;
     setIsLocked(false);
     controlsRef.current.unlock();
+    handleFullscreen();
     if (pointerLockControlTimeoutRef.current) {
       clearTimeout(pointerLockControlTimeoutRef.current);
     }
@@ -90,7 +97,7 @@ const useControl = ({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !controlsRef.current?.isLocked) {
-        triggerLock();
+        handleLock();
       }
 
       if (!controlsRef.current?.isLocked) {
@@ -125,7 +132,7 @@ const useControl = ({
           break;
       }
     },
-    [triggerLock, speed, controlsRef, playerRef]
+    [handleLock, speed, controlsRef, playerRef]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {

@@ -6,7 +6,6 @@ import { useControls } from 'leva';
 import React, { useEffect, useRef } from 'react';
 import { Color } from 'three';
 import { cn } from '@lib/src';
-import { useFullscreen } from '@hey-world/components';
 import CameraMonitor from '@/components/helpers/CameraMonitor';
 import LevaControl from '@/components/helpers/LevaControl';
 import { Lights, World } from '@/components/Minecraft';
@@ -19,10 +18,6 @@ const MinecraftSection = () => {
   const sectionRef = useRef<HTMLElement>(null);
 
   const terrainDataRef = useRef<TerrainType>([]);
-
-  const { Fullscreen, isFullscreen } = useFullscreen({
-    sectionRef,
-  });
 
   const [dimensions, setDimensions] = useAtom(dimensionsAtom);
 
@@ -60,14 +55,8 @@ const MinecraftSection = () => {
   );
 
   return (
-    <section
-      ref={sectionRef}
-      className={cn('relative flex', {
-        'fixed inset-0 z-50': isFullscreen,
-      })}
-    >
+    <section ref={sectionRef} className={cn('relative flex')}>
       <LevaControl />
-      <Fullscreen className="left-0 top-0" />
       <Canvas
         id="minecraft-main-canvas"
         style={{ aspectRatio: '16/9' }}
