@@ -44,7 +44,14 @@ const useCollision = ({
 
   const { getBlockAt } = useWorld(dimensions.width, dimensions.height, world);
 
-  const eyeOffset = playerHeight / 2 - playerEyeHeight;
+  const eyeOffset = playerHeight - playerEyeHeight;
+  const halfEyeOffset = eyeOffset / 2;
+  const playerHalfHeight = playerHeight / 2;
+
+  const adjustedPlayerYPosition = useCallback(
+    (y: number) => y - playerHalfHeight + halfEyeOffset,
+    [playerHalfHeight, halfEyeOffset]
+  );
 
   const updatePlayerPosition = useCallback(() => {
     if (!playerBodyRef.current || !playerRef.current) {
@@ -52,7 +59,7 @@ const useCollision = ({
     }
     playerBodyRef.current.position.set(
       playerRef.current.position.x,
-      playerRef.current.position.y - playerHeight / 2,
+      adjustedPlayerYPosition(playerRef.current.position.y),
       playerRef.current.position.z
     );
   }, [eyeOffset, controlsRef, playerRef]);
@@ -63,11 +70,10 @@ const useCollision = ({
         return false;
       }
 
-      const playerHalfHeight = playerHeight / 2;
       const playerPosition = playerRef.current.position;
 
       const dx = p.x - playerPosition.x;
-      const dy = p.y - (playerPosition.y - playerHalfHeight);
+      const dy = p.y - adjustedPlayerYPosition(playerPosition.y);
       const dz = p.z - playerPosition.z;
 
       const isOverlapXZ = dx * dx + dz * dz < playerRadius * playerRadius;
@@ -84,15 +90,14 @@ const useCollision = ({
     }
 
     const player = playerRef.current;
-    const playerHalfHeight = playerHeight / 2;
     const playerExtents = {
       x: {
         min: Math.floor(player.position.x - playerRadius),
         max: Math.ceil(player.position.x + playerRadius),
       },
       y: {
-        min: Math.floor(player.position.y - playerHeight),
-        max: Math.ceil(player.position.y),
+        min: Math.floor(player.position.y - playerHeight + eyeOffset),
+        max: Math.ceil(player.position.y - eyeOffset),
       },
       z: {
         min: Math.floor(player.position.z - playerRadius),
@@ -141,7 +146,7 @@ const useCollision = ({
       const nearestY = Math.max(
         blockPosition.y - blockHalfSize,
         Math.min(
-          playerPosition.y - playerHalfHeight,
+          adjustedPlayerYPosition(playerPosition.y),
           blockPosition.y + blockHalfSize
         )
       );
@@ -158,7 +163,7 @@ const useCollision = ({
         narrowPhaseCollisionsRef.current.push(blockPosition);
 
         const dx = nearestX - playerPosition.x;
-        const dy = nearestY - (playerPosition.y - playerHalfHeight);
+        const dy = nearestY - adjustedPlayerYPosition(playerPosition.y);
         const dz = nearestZ - playerPosition.z;
 
         const overlapXZ = playerRadius - Math.sqrt(dx * dx + dz * dz);
