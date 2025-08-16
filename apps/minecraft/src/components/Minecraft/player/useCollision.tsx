@@ -7,19 +7,29 @@ import { RefObject, useCallback, useRef } from 'react';
 import { Mesh, PerspectiveCamera, Vector3 } from 'three';
 import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib';
 
+export type CollisionType = {
+  blockPosition: Vector3;
+  point: Vector3;
+  overlap: number;
+  normal: Vector3;
+};
+
 const useCollision = ({
   playerRef,
+  playerBodyRef,
   controlsRef,
   world,
 }: {
   controlsRef: RefObject<PointerLockControlsImpl | null>;
-  camera: PerspectiveCamera;
-  playerRef: RefObject<Mesh | null>;
+  playerRef: RefObject<PerspectiveCamera | null>;
+  playerBodyRef: RefObject<Mesh | null>;
   world: RefObject<TerrainType>;
 }) => {
   const broadPhaseCollisionsRef = useRef<Vector3[]>([]);
-  const collisionPointsRef = useRef<Vector3[]>([]);
+  const collisionsRef = useRef<CollisionType[]>([]);
+
   const narrowPhaseCollisionsRef = useRef<Vector3[]>([]);
+  const collisionsDeltaRef = useRef<Vector3[]>([]);
 
   const [dimensions] = useAtom(dimensionsAtom);
 
@@ -31,17 +41,38 @@ const useCollision = ({
   const eyeOffset = playerHeight / 2 - playerEyeHeight;
 
   const updatePlayerPosition = useCallback(() => {
-    if (!controlsRef.current || !playerRef.current) {
+    if (!playerBodyRef.current || !playerRef.current) {
       return;
     }
-    playerRef.current.position.set(
-      controlsRef.current.getObject().position.x,
-      controlsRef.current.getObject().position.y + eyeOffset,
-      controlsRef.current.getObject().position.z
+    playerBodyRef.current.position.set(
+      playerRef.current.position.x,
+      playerRef.current.position.y + eyeOffset,
+      playerRef.current.position.z
     );
   }, [eyeOffset, controlsRef, playerRef]);
 
-  const getBroadPhaseCollisions = useCallback(() => {
+  const isPointInBoundingBox = useCallback(
+    (p: Vector3) => {
+      if (!playerRef.current) {
+        return false;
+      }
+
+      const playerHalfHeight = playerHeight / 2;
+      const playerPosition = playerRef.current.position;
+
+      const dx = p.x - playerPosition.x;
+      const dy = p.y - (playerPosition.y - playerHalfHeight);
+      const dz = p.z - playerPosition.z;
+
+      const isOverlapXZ = dx * dx + dz * dz < playerRadius * playerRadius;
+      const isOverlapY = dy < playerHalfHeight && dy > -playerHalfHeight;
+
+      return isOverlapXZ && isOverlapY;
+    },
+    [playerRef]
+  );
+
+  const detectBroadPhaseCollisions = useCallback(() => {
     if (!playerRef.current) {
       return;
     }
@@ -54,8 +85,8 @@ const useCollision = ({
         max: Math.ceil(player.position.x + playerRadius),
       },
       y: {
-        min: Math.floor(player.position.y - playerHalfHeight),
-        max: Math.ceil(player.position.y + playerHalfHeight),
+        min: Math.floor(player.position.y + eyeOffset - playerHalfHeight),
+        max: Math.ceil(player.position.y + eyeOffset + playerHalfHeight),
       },
       z: {
         min: Math.floor(player.position.z - playerRadius),
@@ -82,7 +113,7 @@ const useCollision = ({
     logBroadPhase('broadPhaseCollisions', broadPhaseCollisionsRef.current);
   }, [getBlockAt, playerRef, logBroadPhase]);
 
-  const getNarrowPhaseCollisions = useCallback(() => {
+  const detectNarrowPhaseCollisions = useCallback(() => {
     if (!playerRef.current) {
       return;
     }
@@ -91,10 +122,10 @@ const useCollision = ({
     const playerHalfHeight = playerHeight / 2;
 
     const playerPosition = playerRef.current.position;
-    const adjustedPlayerPositionY = playerPosition.y;
 
-    collisionPointsRef.current = [];
+    collisionsRef.current = [];
     narrowPhaseCollisionsRef.current = [];
+    collisionsDeltaRef.current = [];
 
     broadPhaseCollisionsRef.current.map((blockPosition) => {
       const nearestX = Math.max(
@@ -103,41 +134,92 @@ const useCollision = ({
       );
       const nearestY = Math.max(
         blockPosition.y - blockHalfSize,
-        Math.min(adjustedPlayerPositionY, blockPosition.y + blockHalfSize)
+        Math.min(
+          playerPosition.y - playerHalfHeight,
+          blockPosition.y + blockHalfSize
+        )
       );
       const nearestZ = Math.max(
         blockPosition.z - blockHalfSize,
         Math.min(playerPosition.z, blockPosition.z + blockHalfSize)
       );
 
-      const dx = playerPosition.x - nearestX;
-      const dz = playerPosition.z - nearestZ;
+      const isBlockInBoundingBox = isPointInBoundingBox(
+        new Vector3(nearestX, nearestY, nearestZ)
+      );
 
-      const overlapXZ = dx * dx + dz * dz <= playerRadius * playerRadius;
-
-      const playerMaxY = adjustedPlayerPositionY + playerHalfHeight;
-      const playerMinY = adjustedPlayerPositionY - playerHalfHeight;
-
-      const overlapY = nearestY <= playerMaxY && nearestY >= playerMinY;
-
-      if (overlapXZ && overlapY) {
-        collisionPointsRef.current.push(
-          new Vector3(nearestX, nearestY, nearestZ)
-        );
-
+      if (isBlockInBoundingBox) {
         narrowPhaseCollisionsRef.current.push(blockPosition);
+
+        const dx = nearestX - playerPosition.x;
+        const dy = nearestY - (playerPosition.y - playerHalfHeight);
+        const dz = nearestZ - playerPosition.z;
+
+        const overlapXZ = playerRadius - Math.sqrt(dx * dx + dz * dz);
+        const overlapY = playerHalfHeight - Math.abs(dy);
+
+        let normal: Vector3;
+        let overlap: number;
+        if (overlapXZ < overlapY) {
+          normal = new Vector3(-dx, 0, -dz).normalize();
+          overlap = overlapXZ;
+        } else {
+          normal = new Vector3(0, -Math.sign(dy), 0);
+          overlap = overlapY;
+        }
+        collisionsRef.current.push({
+          blockPosition,
+          normal,
+          overlap,
+          point: new Vector3(nearestX, nearestY, nearestZ),
+        });
       }
     });
 
-    logNarrowPhase('narrowPhaseCollisions', narrowPhaseCollisionsRef.current);
+    logNarrowPhase('collisionsDeltaRef', collisionsDeltaRef.current);
   }, [playerRef, broadPhaseCollisionsRef, logNarrowPhase]);
+
+  const resolveCollision = useCallback(() => {
+    if (
+      !collisionsRef.current ||
+      collisionsRef.current.length === 0 ||
+      !playerRef.current
+    ) {
+      return;
+    }
+
+    const collisions = [...collisionsRef.current].sort(
+      (a, b) => a.overlap - b.overlap
+    );
+
+    for (const collision of collisions) {
+      if (!isPointInBoundingBox(collision.point)) {
+        return;
+      }
+
+      const deltaPosition = collision.normal
+        .clone()
+        .multiplyScalar(collision.overlap);
+
+      playerRef.current.position.add(deltaPosition);
+    }
+  }, []);
+
+  const detectCollision = useCallback(() => {
+    detectBroadPhaseCollisions();
+    detectNarrowPhaseCollisions();
+  }, []);
+
+  const handleCollision = useCallback(() => {
+    resolveCollision();
+  }, []);
 
   return {
     broadPhaseCollisionsRef,
     narrowPhaseCollisionsRef,
-    collisionPointsRef,
-    getBroadPhaseCollisions,
-    getNarrowPhaseCollisions,
+    collisionsRef,
+    detectCollision,
+    handleCollision,
     updatePlayerPosition,
   };
 };

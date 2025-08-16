@@ -13,12 +13,12 @@ import CollisionDebug from './CollisionDebug';
 import PointDebug from './PointDebug';
 
 const useControl = ({
-  camera,
   playerRef,
+  playerBodyRef,
   world,
 }: {
-  camera: PerspectiveCamera;
-  playerRef: RefObject<Mesh | null>;
+  playerRef: RefObject<PerspectiveCamera | null>;
+  playerBodyRef: RefObject<Mesh | null>;
   world: RefObject<TerrainType>;
 }) => {
   const { speed } = useControls('Player', {
@@ -44,14 +44,14 @@ const useControl = ({
 
   const {
     narrowPhaseCollisionsRef,
-    collisionPointsRef,
-    getBroadPhaseCollisions,
+    collisionsRef,
     updatePlayerPosition,
-    getNarrowPhaseCollisions,
+    detectCollision,
+    handleCollision,
   } = useCollision({
-    camera,
     playerRef,
     controlsRef,
+    playerBodyRef,
     world,
   });
 
@@ -123,13 +123,13 @@ const useControl = ({
           playerVelocityRef.current.y = -speed;
           break;
         case 'r':
-          camera?.position.set(0, 10, 10);
+          playerRef.current?.position.set(0, 10, 10);
           playerVelocityRef.current = new Vector3(0, 0, 0);
           inputRef.current = new Vector3(0, 10, 10);
           break;
       }
     },
-    [triggerLock, speed, controlsRef, camera]
+    [triggerLock, speed, controlsRef, playerRef]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
@@ -185,16 +185,16 @@ const useControl = ({
   useFrame((_, delta) => {
     movePlayer(delta);
     updatePlayerPosition();
-    getBroadPhaseCollisions();
-    getNarrowPhaseCollisions();
+    detectCollision();
+    handleCollision();
   });
 
-  const controls = camera ? (
+  const controls = playerRef.current ? (
     <group>
       <PointerLockControls
         ref={controlsRef}
         selector="#__no_pointer_lock_controls__"
-        camera={camera}
+        camera={playerRef.current}
         onUnlock={handleUnlock}
         domElement={gl.domElement}
       />
@@ -203,7 +203,7 @@ const useControl = ({
         color="red"
         opacity={0.2}
       />
-      <PointDebug positionsRef={collisionPointsRef} wireframe />
+      <PointDebug positionsRef={collisionsRef} wireframe />
     </group>
   ) : null;
 

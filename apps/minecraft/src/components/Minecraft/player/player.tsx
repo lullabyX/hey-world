@@ -8,8 +8,8 @@ import { playerHeight, playerRadius } from '@/lib/constants';
 import CameraPosition from './CameraPosition';
 
 const PlayerControls = ({ world }: { world: RefObject<TerrainType> }) => {
-  const cameraRef = useRef<PerspectiveCameraType>(null);
-  const playerRef = useRef<Mesh>(null);
+  const playerRef = useRef<PerspectiveCameraType>(null);
+  const playerBodyRef = useRef<Mesh>(null);
 
   const { Player } = useControls(
     'Debug',
@@ -22,28 +22,28 @@ const PlayerControls = ({ world }: { world: RefObject<TerrainType> }) => {
   );
 
   const { isLocked, controls } = useControl({
-    camera: cameraRef.current!,
     playerRef,
+    playerBodyRef,
     world,
   });
 
   return (
     <group>
       <PerspectiveCamera
-        ref={cameraRef}
+        ref={playerRef}
         position={[0, 10, 10]}
         near={0.1}
         far={100}
         fov={75}
         makeDefault={isLocked}
       ></PerspectiveCamera>
-      <CameraPosition cameraRef={cameraRef} isLocked={isLocked} />
-      {Player && cameraRef.current && (
-        <cameraHelper args={[cameraRef.current]} />
+      <CameraPosition cameraRef={playerRef} isLocked={isLocked} />
+      {Player && playerRef.current && (
+        <cameraHelper args={[playerRef.current]} />
       )}
       {controls}
       <OrbitControls target={[0, 0, 0]} enabled={!isLocked} />
-      <mesh ref={playerRef} position={[0, 10, 10]}>
+      <mesh ref={playerBodyRef} position={[0, 10, 10]}>
         <cylinderGeometry args={[playerRadius, playerRadius, playerHeight]} />
         <meshBasicMaterial color="white" wireframe />
       </mesh>

@@ -3,7 +3,8 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
-import { InstancedMesh, Object3D, Vector3 } from 'three';
+import { InstancedMesh, Object3D } from 'three';
+import { CollisionType } from './useCollision';
 
 const MAX_INSTANCES = 128;
 
@@ -13,7 +14,7 @@ const PointDebug = ({
   opacity = 0.2,
   wireframe = false,
 }: {
-  positionsRef: RefObject<Vector3[]>;
+  positionsRef: RefObject<CollisionType[]>;
   color?: string;
   opacity?: number;
   wireframe?: boolean;
@@ -26,7 +27,8 @@ const PointDebug = ({
     if (!mesh) {
       return;
     }
-    const positions = positionsRef.current || [];
+    const positions =
+      positionsRef.current.map((collision) => collision.point) || [];
     const count = Math.min(positions.length, MAX_INSTANCES);
     for (let i = 0; i < count; i++) {
       const p = positions[i];
