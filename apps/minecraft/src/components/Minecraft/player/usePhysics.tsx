@@ -38,6 +38,10 @@ const usePhysics = ({
   const collisionsRef = useRef<CollisionType[]>([]);
   const narrowPhaseCollisionsRef = useRef<Vector3[]>([]);
   const physicsAccumulatorRef = useRef(0);
+  const scratchDeltaRef = useRef(new Vector3());
+  const scratchVelocityRef = useRef(new Vector3());
+  const scratchNormalRef = useRef(new Vector3());
+  const scratchPointRef = useRef(new Vector3());
 
   const [dimensions] = useAtom(dimensionsAtom);
 
@@ -106,7 +110,8 @@ const usePhysics = ({
       },
     };
 
-    const newPositions: Vector3[] = [];
+    const positions = broadPhaseCollisionsRef.current;
+    positions.length = 0;
 
     for (let x = playerExtents.x.min; x <= playerExtents.x.max; x++) {
       for (let y = playerExtents.y.min; y <= playerExtents.y.max; y++) {
@@ -114,20 +119,20 @@ const usePhysics = ({
           const block = getBlockAt(x, y, z);
 
           if (block && block.type !== 'empty') {
-            newPositions.push(new Vector3(x, y, z));
+            positions.push(new Vector3(x, y, z));
           }
         }
       }
     }
-
-    broadPhaseCollisionsRef.current = newPositions;
+    // positions array already updated in place
   }, [eyeOffset, playerRef, getBlockAt]);
 
   const detectNarrowPhaseCollisions = useCallback(() => {
     const blockHalfSize = 0.5;
 
-    collisionsRef.current = [];
-    narrowPhaseCollisionsRef.current = [];
+    collisionsRef.current.length = 0;
+    narrowPhaseCollisionsRef.current.length = 0;
+    const scratchPoint = scratchPointRef.current;
 
     for (const blockPosition of broadPhaseCollisionsRef.current) {
       if (!playerRef.current) {
@@ -149,9 +154,9 @@ const usePhysics = ({
         Math.min(playerPosition.z, blockPosition.z + blockHalfSize)
       );
 
-      const nearestPoint = new Vector3(nearestX, nearestY, nearestZ);
+      scratchPoint.set(nearestX, nearestY, nearestZ);
 
-      if (isPointInBoundingBox(nearestPoint)) {
+      if (isPointInBoundingBox(scratchPoint)) {
         narrowPhaseCollisionsRef.current.push(blockPosition);
 
         const dx = nearestX - playerPosition.x;
@@ -175,7 +180,7 @@ const usePhysics = ({
           blockPosition,
           normal,
           overlap,
-          point: nearestPoint,
+          point: new Vector3(nearestX, nearestY, nearestZ),
         });
       }
     }
@@ -202,23 +207,23 @@ const usePhysics = ({
     const yawEuler = new Euler(0, yaw, 0);
     const minusYawEuler = new Euler(0, -yaw, 0);
 
+    const tmpDelta = scratchDeltaRef.current;
+    const tmpVel = scratchVelocityRef.current;
+    const tmpNorm = scratchNormalRef.current;
     for (const collision of collisions) {
       if (!isPointInBoundingBox(collision.point)) {
         continue;
       }
 
-      const deltaPosition = collision.normal
-        .clone()
-        .multiplyScalar(collision.overlap);
+      tmpDelta.copy(collision.normal).multiplyScalar(collision.overlap);
+      playerRef.current.position.add(tmpDelta);
 
-      playerRef.current.position.add(deltaPosition);
-
-      const velocityMagnitude = playerVelocityRef.current
-        .clone()
+      const velocityMagnitude = tmpVel
+        .copy(playerVelocityRef.current)
         .applyEuler(yawEuler)
         .dot(collision.normal);
-      const velocityAdjustment = collision.normal
-        .clone()
+      const velocityAdjustment = tmpNorm
+        .copy(collision.normal)
         .multiplyScalar(velocityMagnitude)
         .negate()
         .applyEuler(minusYawEuler);
