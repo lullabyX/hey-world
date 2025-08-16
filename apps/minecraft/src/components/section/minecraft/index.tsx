@@ -66,6 +66,8 @@ const MinecraftSection = () => {
         'fixed inset-0 z-50': isFullscreen,
       })}
     >
+      <LevaControl />
+      <Fullscreen className="left-0 top-0" />
       <Canvas
         id="minecraft-main-canvas"
         style={{ aspectRatio: '16/9' }}
@@ -93,8 +95,6 @@ const MinecraftSection = () => {
         {StatsControl && <Stats />}
         {CameraControl && <CameraMonitor />}
       </Canvas>
-      <LevaControl />
-      <Fullscreen className="left-0 top-0" />
     </section>
   );
 };

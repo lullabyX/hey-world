@@ -51,7 +51,7 @@ const CameraPosition = ({
   return (
     <Html fullscreen calculatePosition={placeAtCanvasTopLeft}>
       <div className="absolute bottom-2 left-2">
-        <div className="flex flex-row gap-3 rounded bg-black/50 px-2 py-1 text-white">
+        <div className="flex flex-row gap-3 rounded bg-black/50 px-2 py-1 z-0 text-white">
           <div className="flex flex-row gap-1">
             X: <span>{cameraPosition.x.toFixed(2)}</span>
           </div>

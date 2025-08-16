@@ -1,7 +1,6 @@
 import { playerEyeHeight, playerHeight, playerRadius } from '@/lib/constants';
 import { dimensionsAtom } from '@/lib/store';
 import { TerrainType, useWorld } from '@/lib/world';
-import { useLog } from '@base/components/src';
 import { useAtom } from 'jotai';
 import { RefObject, useCallback, useRef } from 'react';
 import { Euler, Mesh, PerspectiveCamera, Vector3 } from 'three';
@@ -14,7 +13,7 @@ export type CollisionType = {
   normal: Vector3;
 };
 
-const useCollision = ({
+const usePhysics = ({
   playerRef,
   playerBodyRef,
   controlsRef,
@@ -31,16 +30,16 @@ const useCollision = ({
   onGroundRef: RefObject<boolean>;
   world: RefObject<TerrainType>;
 }) => {
+  const gravity = 32;
+  const simulationRate = 200;
+  const timeStep = 1 / simulationRate;
+
   const broadPhaseCollisionsRef = useRef<Vector3[]>([]);
   const collisionsRef = useRef<CollisionType[]>([]);
-
   const narrowPhaseCollisionsRef = useRef<Vector3[]>([]);
-  const collisionsDeltaRef = useRef<Vector3[]>([]);
+  const physicsAccumulatorRef = useRef(0);
 
   const [dimensions] = useAtom(dimensionsAtom);
-
-  const logBroadPhase = useLog();
-  const logNarrowPhase = useLog();
 
   const { getBlockAt } = useWorld(dimensions.width, dimensions.height, world);
 
@@ -62,7 +61,7 @@ const useCollision = ({
       adjustedPlayerYPosition(playerRef.current.position.y),
       playerRef.current.position.z
     );
-  }, [eyeOffset, controlsRef, playerRef]);
+  }, [playerBodyRef, playerRef, adjustedPlayerYPosition]);
 
   const isPointInBoundingBox = useCallback(
     (p: Vector3) => {
@@ -81,7 +80,7 @@ const useCollision = ({
 
       return isOverlapXZ && isOverlapY;
     },
-    [playerRef]
+    [playerHalfHeight, playerRef, adjustedPlayerYPosition]
   );
 
   const detectBroadPhaseCollisions = useCallback(() => {
@@ -89,19 +88,19 @@ const useCollision = ({
       return;
     }
 
-    const player = playerRef.current;
+    const playerPosition = playerRef.current.position;
     const playerExtents = {
       x: {
-        min: Math.floor(player.position.x - playerRadius),
-        max: Math.ceil(player.position.x + playerRadius),
+        min: Math.floor(playerPosition.x - playerRadius),
+        max: Math.ceil(playerPosition.x + playerRadius),
       },
       y: {
-        min: Math.floor(player.position.y - playerHeight + eyeOffset),
-        max: Math.ceil(player.position.y - eyeOffset),
+        min: Math.floor(playerPosition.y - playerHeight + eyeOffset),
+        max: Math.ceil(playerPosition.y - eyeOffset),
       },
       z: {
-        min: Math.floor(player.position.z - playerRadius),
-        max: Math.ceil(player.position.z + playerRadius),
+        min: Math.floor(playerPosition.z - playerRadius),
+        max: Math.ceil(playerPosition.z + playerRadius),
       },
     };
 
@@ -120,25 +119,20 @@ const useCollision = ({
     }
 
     broadPhaseCollisionsRef.current = newPositions;
-
-    logBroadPhase('broadPhaseCollisions', broadPhaseCollisionsRef.current);
-  }, [getBlockAt, playerRef, logBroadPhase]);
+  }, [eyeOffset, playerRef, getBlockAt]);
 
   const detectNarrowPhaseCollisions = useCallback(() => {
-    if (!playerRef.current) {
-      return;
-    }
-
     const blockHalfSize = 0.5;
-    const playerHalfHeight = playerHeight / 2;
-
-    const playerPosition = playerRef.current.position;
 
     collisionsRef.current = [];
     narrowPhaseCollisionsRef.current = [];
-    collisionsDeltaRef.current = [];
 
     broadPhaseCollisionsRef.current.map((blockPosition) => {
+      if (!playerRef.current) {
+        return;
+      }
+      const playerPosition = playerRef.current.position;
+
       const nearestX = Math.max(
         blockPosition.x - blockHalfSize,
         Math.min(playerPosition.x, blockPosition.x + blockHalfSize)
@@ -155,11 +149,9 @@ const useCollision = ({
         Math.min(playerPosition.z, blockPosition.z + blockHalfSize)
       );
 
-      const isBlockInBoundingBox = isPointInBoundingBox(
-        new Vector3(nearestX, nearestY, nearestZ)
-      );
+      const nearestPoint = new Vector3(nearestX, nearestY, nearestZ);
 
-      if (isBlockInBoundingBox) {
+      if (isPointInBoundingBox(nearestPoint)) {
         narrowPhaseCollisionsRef.current.push(blockPosition);
 
         const dx = nearestX - playerPosition.x;
@@ -183,13 +175,17 @@ const useCollision = ({
           blockPosition,
           normal,
           overlap,
-          point: new Vector3(nearestX, nearestY, nearestZ),
+          point: nearestPoint,
         });
       }
     });
-
-    logNarrowPhase('collisionsDeltaRef', collisionsDeltaRef.current);
-  }, [playerRef, broadPhaseCollisionsRef, logNarrowPhase]);
+  }, [
+    playerHalfHeight,
+    playerRef,
+    onGroundRef,
+    isPointInBoundingBox,
+    adjustedPlayerYPosition,
+  ]);
 
   const resolveCollision = useCallback(() => {
     if (
@@ -200,13 +196,12 @@ const useCollision = ({
       return;
     }
 
-    const collisions = [...collisionsRef.current].sort(
-      (a, b) => b.overlap - a.overlap
-    );
+    const collisions = collisionsRef.current;
+    collisions.sort((a, b) => a.overlap - b.overlap);
 
     for (const collision of collisions) {
       if (!isPointInBoundingBox(collision.point)) {
-        return;
+        continue;
       }
 
       const deltaPosition = collision.normal
@@ -222,53 +217,85 @@ const useCollision = ({
       const velocityAdjustment = collision.normal
         .clone()
         .multiplyScalar(velocityMagnitude)
-        .applyEuler(new Euler(0, -playerRef.current.rotation.y, 0))
-        .negate();
+        .negate()
+        .applyEuler(new Euler(0, -playerRef.current.rotation.y, 0));
       playerVelocityRef.current.add(velocityAdjustment);
     }
-  }, []);
+  }, [playerRef, playerVelocityRef, isPointInBoundingBox]);
 
   const detectCollision = useCallback(() => {
     onGroundRef.current = false;
     detectBroadPhaseCollisions();
     detectNarrowPhaseCollisions();
-  }, []);
+  }, [onGroundRef, detectBroadPhaseCollisions, detectNarrowPhaseCollisions]);
 
-  const handleCollision = useCallback(() => {
-    resolveCollision();
-  }, []);
+  const movePlayer = useCallback(
+    (delta: number) => {
+      if (
+        !controlsRef.current ||
+        !controlsRef.current.isLocked ||
+        !playerRef.current
+      ) {
+        return;
+      }
 
-  const movePlayer = useCallback((delta: number) => {
-    if (
-      !controlsRef.current ||
-      !controlsRef.current.isLocked ||
-      !playerRef.current
-    ) {
-      return;
-    }
+      playerVelocityRef.current.x = inputRef.current.x * delta;
+      playerVelocityRef.current.z = inputRef.current.z * delta;
 
-    playerVelocityRef.current.x = inputRef.current.x * delta;
-    playerVelocityRef.current.z = inputRef.current.z * delta;
+      controlsRef.current.moveRight(playerVelocityRef.current.x);
+      controlsRef.current.moveForward(playerVelocityRef.current.z);
 
-    controlsRef.current.moveRight(playerVelocityRef.current.x);
-    controlsRef.current.moveForward(playerVelocityRef.current.z);
+      playerRef.current.position.y += playerVelocityRef.current.y * delta;
+    },
+    [inputRef, playerRef, controlsRef, playerVelocityRef]
+  );
 
-    playerRef.current.position.y += playerVelocityRef.current.y * delta;
-  }, []);
+  const applyGravity = useCallback(
+    (dt: number) => {
+      playerVelocityRef.current.y -= gravity * dt;
+    },
+    [playerVelocityRef]
+  );
 
-  const updatePlayer = useCallback((dt: number) => {
-    movePlayer(dt);
-    detectCollision();
-    handleCollision();
-    updatePlayerPosition();
-  }, []);
+  const runPhysics = useCallback(
+    (dt: number) => {
+      applyGravity(dt);
+      movePlayer(dt);
+      detectCollision();
+      resolveCollision();
+      updatePlayerPosition();
+    },
+    [
+      applyGravity,
+      movePlayer,
+      detectCollision,
+      resolveCollision,
+      updatePlayerPosition,
+    ]
+  );
+
+  const updatePhysics = useCallback(
+    (dt: number) => {
+      if (!controlsRef.current?.isLocked) {
+        return;
+      }
+
+      physicsAccumulatorRef.current += dt;
+
+      while (physicsAccumulatorRef.current >= timeStep) {
+        runPhysics(timeStep);
+        physicsAccumulatorRef.current -= timeStep;
+      }
+    },
+    [timeStep, controlsRef, physicsAccumulatorRef, runPhysics]
+  );
 
   return {
     broadPhaseCollisionsRef,
     narrowPhaseCollisionsRef,
     collisionsRef,
-    updatePlayer,
+    updatePhysics,
   };
 };
 
-export default useCollision;
+export default usePhysics;

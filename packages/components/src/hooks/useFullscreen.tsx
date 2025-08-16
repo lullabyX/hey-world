@@ -46,14 +46,13 @@ const useFullscreen = ({
     ...restDivProps
   }: React.ComponentProps<'div'>) => (
     <div
-      className={cn('absolute bottom-0 left-0 z-10 flex p-4', className)}
+      className={cn('absolute bottom-0 left-0 z-10 flex h-fit p-4', className)}
       {...restDivProps}
     >
       <Button
         variant="outline"
         size="icon"
         onClick={handleFullscreen}
-        className="shrink-0"
         title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
       >
         {isFullscreen ? (

@@ -8,7 +8,7 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import type { ForwardedRef, RefObject } from 'react';
 import { Mesh, PerspectiveCamera, Vector3 } from 'three';
 import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib';
-import useCollision from './useCollision';
+import useCollision from './usePhysics';
 import CollisionDebug from './CollisionDebug';
 import PointDebug from './PointDebug';
 
@@ -30,7 +30,6 @@ const useControl = ({
     },
   });
 
-  const gravity = 32;
   const jumpSpeed = 10;
   const onGroundRef = useRef(false);
 
@@ -46,7 +45,7 @@ const useControl = ({
 
   const { gl } = useThree();
 
-  const { narrowPhaseCollisionsRef, collisionsRef, updatePlayer } =
+  const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } =
     useCollision({
       inputRef,
       playerRef,
@@ -57,14 +56,6 @@ const useControl = ({
       onGroundRef,
     });
 
-  useEffect(() => {
-    return () => {
-      if (pointerLockControlTimeoutRef.current) {
-        clearTimeout(pointerLockControlTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const triggerLock = useCallback(() => {
     if (!controlsRef.current || controlsRef.current.isLocked) {
       return;
@@ -74,6 +65,11 @@ const useControl = ({
     }
     controlsRef.current.lock();
     setIsLocked(true);
+    return () => {
+      if (pointerLockControlTimeoutRef.current) {
+        clearTimeout(pointerLockControlTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleUnlock = useCallback(() => {
@@ -120,12 +116,11 @@ const useControl = ({
           break;
         case ' ':
           if (onGroundRef.current) {
-            playerVelocityRef.current.y = 10;
+            playerVelocityRef.current.y = jumpSpeed;
           }
           break;
         case 'r':
           playerRef.current?.position.set(0, 10, 10);
-          inputRef.current = new Vector3(0, 0, 0);
           playerVelocityRef.current = new Vector3(0, 0, 0);
           break;
       }
@@ -166,16 +161,8 @@ const useControl = ({
     };
   }, [handleKeyDown, handleKeyUp]);
 
-  const applyInputs = useCallback((dt: number) => {
-    if (!controlsRef.current?.isLocked) {
-      return;
-    }
-    playerVelocityRef.current.y -= gravity * dt;
-    updatePlayer(dt);
-  }, []);
-
   useFrame((_, delta) => {
-    applyInputs(delta);
+    updatePhysics(delta);
   });
 
   const controls = playerRef.current ? (
