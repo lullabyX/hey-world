@@ -70,8 +70,6 @@ const MinecraftSection = () => {
         shadows
         scene={{
           background: new Color('#80a0e0'),
-          castShadow: true,
-          receiveShadow: true,
         }}
       >
         {Grid && <gridHelper args={[128, 128]} />}

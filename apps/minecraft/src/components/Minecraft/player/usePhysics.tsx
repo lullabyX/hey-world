@@ -134,6 +134,10 @@ const usePhysics = ({
     narrowPhaseCollisionsRef.current.length = 0;
     const scratchPoint = scratchPointRef.current;
 
+    if (broadPhaseCollisionsRef.current.length === 0) {
+      return;
+    }
+
     for (const blockPosition of broadPhaseCollisionsRef.current) {
       if (!playerRef.current) {
         return;
@@ -202,7 +206,9 @@ const usePhysics = ({
     }
 
     const collisions = collisionsRef.current;
-    collisions.sort((a, b) => a.overlap - b.overlap);
+    if (collisions.length > 1) {
+      collisions.sort((a, b) => a.overlap - b.overlap);
+    }
     const yaw = playerRef.current.rotation.y;
     const yawEuler = new Euler(0, yaw, 0);
     const minusYawEuler = new Euler(0, -yaw, 0);
@@ -290,9 +296,15 @@ const usePhysics = ({
 
       physicsAccumulatorRef.current += dt;
 
-      while (physicsAccumulatorRef.current >= timeStep) {
+      const MAX_SUBSTEPS = 4;
+      let steps = 0;
+      while (
+        physicsAccumulatorRef.current >= timeStep &&
+        steps < MAX_SUBSTEPS
+      ) {
         runPhysics(timeStep);
         physicsAccumulatorRef.current -= timeStep;
+        steps++;
       }
     },
     [timeStep, controlsRef, physicsAccumulatorRef, runPhysics]
