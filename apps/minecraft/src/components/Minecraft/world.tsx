@@ -339,7 +339,7 @@ const World = ({
       castShadow
       receiveShadow
     >
-      <meshLambertMaterial ref={materialRef} flatShading />
+      <meshLambertMaterial ref={materialRef} />
       <boxGeometry args={[1, 1, 1]} />
     </instancedMesh>
   );

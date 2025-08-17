@@ -38,6 +38,10 @@ const usePhysics = ({
   const collisionsRef = useRef<CollisionType[]>([]);
   const narrowPhaseCollisionsRef = useRef<Vector3[]>([]);
   const physicsAccumulatorRef = useRef(0);
+  const scratchDeltaRef = useRef(new Vector3());
+  const scratchVelocityRef = useRef(new Vector3());
+  const scratchNormalRef = useRef(new Vector3());
+  const scratchPointRef = useRef(new Vector3());
 
   const [dimensions] = useAtom(dimensionsAtom);
 
@@ -70,12 +74,14 @@ const usePhysics = ({
       }
 
       const playerPosition = playerRef.current.position;
+      const adjustedPlayerY = adjustedPlayerYPosition(playerPosition.y);
+      const playerRadiusSquared = playerRadius * playerRadius;
 
       const dx = p.x - playerPosition.x;
-      const dy = p.y - adjustedPlayerYPosition(playerPosition.y);
+      const dy = p.y - adjustedPlayerY;
       const dz = p.z - playerPosition.z;
 
-      const isOverlapXZ = dx * dx + dz * dz < playerRadius * playerRadius;
+      const isOverlapXZ = dx * dx + dz * dz < playerRadiusSquared;
       const isOverlapY = Math.abs(dy) < playerHalfHeight;
 
       return isOverlapXZ && isOverlapY;
@@ -104,7 +110,8 @@ const usePhysics = ({
       },
     };
 
-    const newPositions: Vector3[] = [];
+    const positions = broadPhaseCollisionsRef.current;
+    positions.length = 0;
 
     for (let x = playerExtents.x.min; x <= playerExtents.x.max; x++) {
       for (let y = playerExtents.y.min; y <= playerExtents.y.max; y++) {
@@ -112,26 +119,31 @@ const usePhysics = ({
           const block = getBlockAt(x, y, z);
 
           if (block && block.type !== 'empty') {
-            newPositions.push(new Vector3(x, y, z));
+            positions.push(new Vector3(x, y, z));
           }
         }
       }
     }
-
-    broadPhaseCollisionsRef.current = newPositions;
+    // positions array already updated in place
   }, [eyeOffset, playerRef, getBlockAt]);
 
   const detectNarrowPhaseCollisions = useCallback(() => {
     const blockHalfSize = 0.5;
 
-    collisionsRef.current = [];
-    narrowPhaseCollisionsRef.current = [];
+    collisionsRef.current.length = 0;
+    narrowPhaseCollisionsRef.current.length = 0;
+    const scratchPoint = scratchPointRef.current;
 
-    broadPhaseCollisionsRef.current.map((blockPosition) => {
+    if (broadPhaseCollisionsRef.current.length === 0) {
+      return;
+    }
+
+    for (const blockPosition of broadPhaseCollisionsRef.current) {
       if (!playerRef.current) {
         return;
       }
       const playerPosition = playerRef.current.position;
+      const playerAdjustedY = adjustedPlayerYPosition(playerPosition.y);
 
       const nearestX = Math.max(
         blockPosition.x - blockHalfSize,
@@ -139,23 +151,20 @@ const usePhysics = ({
       );
       const nearestY = Math.max(
         blockPosition.y - blockHalfSize,
-        Math.min(
-          adjustedPlayerYPosition(playerPosition.y),
-          blockPosition.y + blockHalfSize
-        )
+        Math.min(playerAdjustedY, blockPosition.y + blockHalfSize)
       );
       const nearestZ = Math.max(
         blockPosition.z - blockHalfSize,
         Math.min(playerPosition.z, blockPosition.z + blockHalfSize)
       );
 
-      const nearestPoint = new Vector3(nearestX, nearestY, nearestZ);
+      scratchPoint.set(nearestX, nearestY, nearestZ);
 
-      if (isPointInBoundingBox(nearestPoint)) {
+      if (isPointInBoundingBox(scratchPoint)) {
         narrowPhaseCollisionsRef.current.push(blockPosition);
 
         const dx = nearestX - playerPosition.x;
-        const dy = nearestY - adjustedPlayerYPosition(playerPosition.y);
+        const dy = nearestY - playerAdjustedY;
         const dz = nearestZ - playerPosition.z;
 
         const overlapXZ = playerRadius - Math.sqrt(dx * dx + dz * dz);
@@ -175,10 +184,10 @@ const usePhysics = ({
           blockPosition,
           normal,
           overlap,
-          point: nearestPoint,
+          point: new Vector3(nearestX, nearestY, nearestZ),
         });
       }
-    });
+    }
   }, [
     playerHalfHeight,
     playerRef,
@@ -197,28 +206,33 @@ const usePhysics = ({
     }
 
     const collisions = collisionsRef.current;
-    collisions.sort((a, b) => a.overlap - b.overlap);
+    if (collisions.length > 1) {
+      collisions.sort((a, b) => a.overlap - b.overlap);
+    }
+    const yaw = playerRef.current.rotation.y;
+    const yawEuler = new Euler(0, yaw, 0);
+    const minusYawEuler = new Euler(0, -yaw, 0);
 
+    const tmpDelta = scratchDeltaRef.current;
+    const tmpVel = scratchVelocityRef.current;
+    const tmpNorm = scratchNormalRef.current;
     for (const collision of collisions) {
       if (!isPointInBoundingBox(collision.point)) {
         continue;
       }
 
-      const deltaPosition = collision.normal
-        .clone()
-        .multiplyScalar(collision.overlap);
+      tmpDelta.copy(collision.normal).multiplyScalar(collision.overlap);
+      playerRef.current.position.add(tmpDelta);
 
-      playerRef.current.position.add(deltaPosition);
-
-      const velocityMagnitude = playerVelocityRef.current
-        .clone()
-        .applyEuler(new Euler(0, playerRef.current.rotation.y, 0))
+      const velocityMagnitude = tmpVel
+        .copy(playerVelocityRef.current)
+        .applyEuler(yawEuler)
         .dot(collision.normal);
-      const velocityAdjustment = collision.normal
-        .clone()
+      const velocityAdjustment = tmpNorm
+        .copy(collision.normal)
         .multiplyScalar(velocityMagnitude)
         .negate()
-        .applyEuler(new Euler(0, -playerRef.current.rotation.y, 0));
+        .applyEuler(minusYawEuler);
       playerVelocityRef.current.add(velocityAdjustment);
     }
   }, [playerRef, playerVelocityRef, isPointInBoundingBox]);
@@ -282,9 +296,15 @@ const usePhysics = ({
 
       physicsAccumulatorRef.current += dt;
 
-      while (physicsAccumulatorRef.current >= timeStep) {
+      const MAX_SUBSTEPS = 4;
+      let steps = 0;
+      while (
+        physicsAccumulatorRef.current >= timeStep &&
+        steps < MAX_SUBSTEPS
+      ) {
         runPhysics(timeStep);
         physicsAccumulatorRef.current -= timeStep;
+        steps++;
       }
     },
     [timeStep, controlsRef, physicsAccumulatorRef, runPhysics]
