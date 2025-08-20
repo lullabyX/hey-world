@@ -1,6 +1,5 @@
 'use client';
 
-import { TerrainType } from '@/lib/world';
 import { PointerLockControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useControls } from 'leva';
@@ -8,19 +7,17 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import type { ForwardedRef, RefObject } from 'react';
 import { Mesh, PerspectiveCamera, Vector3 } from 'three';
 import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib';
-import useCollision from './usePhysics';
-import CollisionDebug from './CollisionDebug';
-import PointDebug from './PointDebug';
+import CollisionDebug from '@/components/helpers/CollisionDebug';
+import PointDebug from '@/components/helpers/PointDebug';
 import { useFullscreen } from '@base/components/src';
+import usePhysics from './usePhysics';
 
 const useControl = ({
   playerRef,
   playerBodyRef,
-  world,
 }: {
   playerRef: RefObject<PerspectiveCamera | null>;
   playerBodyRef: RefObject<Mesh | null>;
-  world: RefObject<TerrainType>;
 }) => {
   const { speed } = useControls('Player', {
     speed: {
@@ -44,22 +41,28 @@ const useControl = ({
 
   const [isLocked, setIsLocked] = useState(false);
 
+  const { 'Collision Debug': isCollisionDebug, 'Point Debug': isPointDebug } =
+    useControls('Debug', {
+      'Collision Debug': { value: false },
+      'Point Debug': { value: false },
+    });
+
   const { handleFullscreen } = useFullscreen({
     id: 'minecraft-main-canvas',
   });
 
   const { gl } = useThree();
 
-  const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } =
-    useCollision({
+  const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } = usePhysics(
+    {
       inputRef,
       playerRef,
       controlsRef,
       playerBodyRef,
       playerVelocityRef,
-      world,
       onGroundRef,
-    });
+    }
+  );
 
   const handleLock = useCallback(() => {
     if (!controlsRef.current || controlsRef.current.isLocked) {
@@ -76,7 +79,7 @@ const useControl = ({
         clearTimeout(pointerLockControlTimeoutRef.current);
       }
     };
-  }, []);
+  }, [handleFullscreen]);
 
   const handleUnlock = useCallback(() => {
     if (!controlsRef.current || !controlsRef.current.isLocked) {
@@ -92,7 +95,7 @@ const useControl = ({
     pointerLockControlTimeoutRef.current = setTimeout(() => {
       pointerLockReadyRef.current = true;
     }, 1500);
-  }, []);
+  }, [handleFullscreen]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -181,12 +184,14 @@ const useControl = ({
         onUnlock={handleUnlock}
         domElement={gl.domElement}
       />
-      <CollisionDebug
-        positionsRef={narrowPhaseCollisionsRef}
-        color="red"
-        opacity={0.2}
-      />
-      <PointDebug positionsRef={collisionsRef} wireframe />
+      {isCollisionDebug && (
+        <CollisionDebug
+          positionsRef={narrowPhaseCollisionsRef}
+          color="red"
+          opacity={0.2}
+        />
+      )}
+      {isPointDebug && <PointDebug positionsRef={collisionsRef} wireframe />}
     </group>
   ) : null;
 

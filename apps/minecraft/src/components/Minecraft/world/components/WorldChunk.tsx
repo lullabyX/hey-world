@@ -2,7 +2,6 @@
 
 import { folder, useControls } from 'leva';
 import React, {
-  RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -20,20 +19,45 @@ import {
 import { createAtlasOnBeforeCompile, loadTextureTiles } from '@/lib/texture';
 import { useAtlas } from '@/lib/texture';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
-import { Block, getResourceEntries } from '@/lib/block';
-import { TerrainType, useWorld } from '@/lib/world';
+import { Block, BlockType, getResourceEntries } from '@/lib/block';
 import { RandomNumberGenerator } from '@/helpers/random-number-generator';
+import { ChuckType, useWorldChunk } from '../hooks/useWorldChunk';
+import useWorldManager from '../hooks/useWorldManger';
 
-const World = ({
+export type WorldChunkHandle = {
+  terrainDataRef: React.RefObject<ChuckType>;
+  getBlockAt: (x: number, y: number, z: number) => Block | null;
+  setBlockTypeAt: (x: number, y: number, z: number, type: BlockType) => void;
+  setBlockInstanceIdAt: (x: number, y: number, z: number, id: number) => void;
+  isBlockVisible: (x: number, y: number, z: number) => boolean;
+  initializeTerrain: () => void;
+  generateMesh: () => void;
+};
+
+const WorldChunk = ({
   width,
   height,
-  terrainData,
+  xPosition,
+  zPosition,
+  scale,
+  magnitude,
+  offset,
+  seed,
 }: {
   width: number;
   height: number;
-  terrainData: RefObject<TerrainType>;
+  xPosition: number;
+  zPosition: number;
+  scale: number;
+  magnitude: number;
+  offset: number;
+  seed: number;
 }) => {
   const totalSize = width * width * height;
+  const xOffset = xPosition * width;
+  const zOffset = zPosition * width;
+
+  const terrainData = useRef<ChuckType>([]);
 
   const meshRef = useRef<InstancedMesh>(null);
   const materialRef = useRef<MeshLambertMaterial>(null);
@@ -47,38 +71,9 @@ const World = ({
     isBlockVisible,
     setBlockInstanceIdAt,
     initializeTerrain,
-  } = useWorld(width, height, terrainData);
+  } = useWorldChunk(width, height, terrainData);
 
-  const { scale, magnitude, offset, seed } = useControls(
-    'Terrain',
-    {
-      scale: {
-        value: 30,
-        min: 20,
-        max: 100,
-        step: 1,
-      },
-      magnitude: {
-        value: 0.5,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      offset: {
-        value: 0.2,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      seed: {
-        value: 123456789,
-        min: 0,
-        max: 1000000000,
-        step: 1,
-      },
-    },
-    { collapsed: true }
-  );
+  const { registerChunk, unregisterChunk } = useWorldManager();
 
   const resources = useMemo(() => getResourceEntries(), []);
   const resourceControlsSchema = useMemo(
@@ -130,27 +125,15 @@ const World = ({
   }) as Record<string, number>;
   const resourceControlsKey = JSON.stringify(resourceControls);
 
-  // Inject shader to sample atlas with per-face offsets
-  useEffect(() => {
-    if (!materialRef.current) return;
-    const mat = materialRef.current;
-    const inject = createAtlasOnBeforeCompile({
-      atlasScaleRef,
-      atlasPaddingRef,
-    });
-    mat.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
-      mat.userData.shader = shader;
-      inject(shader);
-    };
-    mat.needsUpdate = true;
-  }, [atlasScaleRef, atlasPaddingRef]);
-
   const generateTerrain = useCallback(
     ({ rng }: { rng: RandomNumberGenerator }) => {
       const simplexNoise = new SimplexNoise(rng);
       for (let x = 0; x < width; x++) {
         for (let z = 0; z < width; z++) {
-          const value = simplexNoise.noise(x / scale, z / scale);
+          const value = simplexNoise.noise(
+            (x + xOffset) / scale,
+            (z + zOffset) / scale
+          );
           const scaledValue = value * magnitude + offset;
 
           let _height = Math.floor(height * scaledValue);
@@ -170,7 +153,17 @@ const World = ({
         }
       }
     },
-    [width, height, getBlockAt, setBlockTypeAt, scale, magnitude, offset]
+    [
+      width,
+      height,
+      getBlockAt,
+      setBlockTypeAt,
+      scale,
+      magnitude,
+      offset,
+      xOffset,
+      zOffset,
+    ]
   );
 
   const generateResources = useCallback(
@@ -202,9 +195,9 @@ const World = ({
                 continue;
               }
               const value = simplexNoise.noise3d(
-                x / scale.x,
+                (x + xOffset) / scale.x,
                 y / scale.y,
-                z / scale.z
+                (z + zOffset) / scale.z
               );
               if (value > threshold) {
                 setBlockTypeAt(x, y, z, resourceType);
@@ -214,7 +207,15 @@ const World = ({
         }
       });
     },
-    [width, height, getBlockAt, setBlockTypeAt, resourceControlsKey]
+    [
+      width,
+      height,
+      getBlockAt,
+      setBlockTypeAt,
+      resourceControlsKey,
+      xOffset,
+      zOffset,
+    ]
   );
 
   const generateMesh = useCallback(() => {
@@ -245,7 +246,7 @@ const World = ({
           const _isBlockVisible = isBlockVisible(x, y, z);
           if (notEmptyBlock && _isBlockVisible) {
             // Center the world around origin
-            matrix.setPosition(x, y, z);
+            matrix.setPosition(x + xOffset, y, z + zOffset);
 
             const instanceId = meshRef.current.count;
             setBlockInstanceIdAt(x, y, z, instanceId);
@@ -307,7 +308,44 @@ const World = ({
     atlas,
     atlasScaleRef,
     materialRef,
+    xOffset,
+    zOffset,
   ]);
+
+  const handle = useMemo<WorldChunkHandle>(
+    () => ({
+      terrainDataRef: terrainData,
+      getBlockAt,
+      setBlockTypeAt,
+      setBlockInstanceIdAt,
+      isBlockVisible,
+      initializeTerrain,
+      generateMesh,
+    }),
+    [
+      getBlockAt,
+      setBlockTypeAt,
+      setBlockInstanceIdAt,
+      isBlockVisible,
+      initializeTerrain,
+      generateMesh,
+    ]
+  );
+
+  // Inject shader to sample atlas with per-face offsets
+  useEffect(() => {
+    if (!materialRef.current) return;
+    const mat = materialRef.current;
+    const inject = createAtlasOnBeforeCompile({
+      atlasScaleRef,
+      atlasPaddingRef,
+    });
+    mat.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
+      mat.userData.shader = shader;
+      inject(shader);
+    };
+    mat.needsUpdate = true;
+  }, [atlasScaleRef, atlasPaddingRef]);
 
   // Initialize terrain and generate mesh when parameters change
   useLayoutEffect(() => {
@@ -331,6 +369,11 @@ const World = ({
     materialRef.current.needsUpdate = true;
   }, [atlas]);
 
+  useEffect(() => {
+    registerChunk(xPosition, zPosition, handle);
+    return () => unregisterChunk(xPosition, zPosition);
+  }, [registerChunk, unregisterChunk, handle, xPosition, zPosition]);
+
   return (
     <instancedMesh
       ref={meshRef}
@@ -345,6 +388,6 @@ const World = ({
   );
 };
 
-World.displayName = 'World';
+WorldChunk.displayName = 'WorldChunk';
 
-export default World;
+export default WorldChunk;

@@ -1,10 +1,8 @@
 import { playerEyeHeight, playerHeight, playerRadius } from '@/lib/constants';
-import { dimensionsAtom } from '@/lib/store';
-import { TerrainType, useWorld } from '@/lib/world';
-import { useAtom } from 'jotai';
 import { RefObject, useCallback, useRef } from 'react';
 import { Euler, Mesh, PerspectiveCamera, Vector3 } from 'three';
 import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib';
+import { useWorldManager } from '@/components/Minecraft/world';
 
 export type CollisionType = {
   blockPosition: Vector3;
@@ -20,7 +18,6 @@ const usePhysics = ({
   inputRef,
   playerVelocityRef,
   onGroundRef,
-  world,
 }: {
   controlsRef: RefObject<PointerLockControlsImpl | null>;
   inputRef: RefObject<Vector3>;
@@ -28,7 +25,6 @@ const usePhysics = ({
   playerRef: RefObject<PerspectiveCamera | null>;
   playerBodyRef: RefObject<Mesh | null>;
   onGroundRef: RefObject<boolean>;
-  world: RefObject<TerrainType>;
 }) => {
   const gravity = 32;
   const simulationRate = 200;
@@ -43,9 +39,7 @@ const usePhysics = ({
   const scratchNormalRef = useRef(new Vector3());
   const scratchPointRef = useRef(new Vector3());
 
-  const [dimensions] = useAtom(dimensionsAtom);
-
-  const { getBlockAt } = useWorld(dimensions.width, dimensions.height, world);
+  const { getBlockAt, playerPositionRef } = useWorldManager();
 
   const eyeOffset = playerHeight - playerEyeHeight;
   const halfEyeOffset = eyeOffset / 2;
@@ -65,7 +59,8 @@ const usePhysics = ({
       adjustedPlayerYPosition(playerRef.current.position.y),
       playerRef.current.position.z
     );
-  }, [playerBodyRef, playerRef, adjustedPlayerYPosition]);
+    playerPositionRef.current.copy(playerBodyRef.current.position);
+  }, [playerBodyRef, playerRef, adjustedPlayerYPosition, playerPositionRef]);
 
   const isPointInBoundingBox = useCallback(
     (p: Vector3) => {
