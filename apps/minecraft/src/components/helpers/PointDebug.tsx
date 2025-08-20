@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import { InstancedMesh, Object3D } from 'three';
-import { CollisionType } from './usePhysics';
+import { CollisionType } from '../Minecraft/player/hooks/usePhysics';
 
 const MAX_INSTANCES = 128;
 

@@ -6,7 +6,7 @@ import { Color, InstancedMesh, Matrix4 } from 'three';
 import { cn } from '@lib/src';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
 import { Block, createBlock } from '@/lib/block';
-import { TerrainType, useWorld } from '@/lib/world';
+import { ChuckType, useWorldChunk } from '../Minecraft/world';
 
 const World = ({
   width,
@@ -21,14 +21,14 @@ const World = ({
   scale: number;
   magnitude: number;
   offset: number;
-  terrainDataRef: RefObject<TerrainType>;
+  terrainDataRef: RefObject<ChuckType>;
 }) => {
   const halfSize = Math.floor(width / 2);
   const totalSize = width * width * height;
 
   const meshRef = useRef<InstancedMesh>(null);
   const { getBlockAt, setBlockTypeAt, isBlockVisible, setBlockInstanceIdAt } =
-    useWorld(width, height, terrainDataRef);
+    useWorldChunk(width, height, terrainDataRef);
 
   const initializeTerrain = useCallback(() => {
     terrainDataRef.current = [];
@@ -156,7 +156,7 @@ const MinecraftWorld = ({
   offset: number;
 } & React.HTMLAttributes<HTMLDivElement>) => {
   const worldRef = useRef<HTMLDivElement>(null);
-  const terrainDataRef = useRef<TerrainType>([]);
+  const terrainDataRef = useRef<ChuckType>([]);
 
   return (
     <div ref={worldRef} className={cn('relative flex', className)} {...rest}>

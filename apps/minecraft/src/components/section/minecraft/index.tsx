@@ -3,53 +3,35 @@
 import { GizmoHelper, GizmoViewport, Stats } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useControls } from 'leva';
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Color } from 'three';
 import { cn } from '@lib/src';
 import CameraMonitor from '@/components/helpers/CameraMonitor';
 import LevaControl from '@/components/helpers/LevaControl';
-import { Lights, World } from '@/components/Minecraft';
-import Player from '@/components/Minecraft/player/player';
-import { TerrainType } from '@/lib/world';
+import { Lights } from '@/components/Minecraft';
+import Player from '@/components/Minecraft/player/components/Player';
 import { useAtom } from 'jotai';
 import { dimensionsAtom } from '@/lib/store';
+import World from '@/components/Minecraft/world/components/World';
+import { WorldManagerProvider } from '@/components/Minecraft/world/state/WorldManager';
 
 const MinecraftSection = () => {
   const sectionRef = useRef<HTMLElement>(null);
 
-  const terrainDataRef = useRef<TerrainType>([]);
-
-  const [dimensions, setDimensions] = useAtom(dimensionsAtom);
-
-  const { width, height } = useControls('World', {
-    width: {
-      value: dimensions.width,
-      min: 16,
-      max: 128,
-      step: 2,
-    },
-    height: {
-      value: dimensions.height,
-      min: 4,
-      max: 32,
-      step: 2,
-    },
-  });
-
-  useEffect(() => {
-    setDimensions({ width, height });
-  }, [width, height, setDimensions]);
+  const [dimensions] = useAtom(dimensionsAtom);
 
   const {
-    Grid,
-    Stats: StatsControl,
-    Camera: CameraControl,
+    Grid: isGridControl,
+    Stats: isStatsControl,
+    Camera: isCameraControl,
+    Gizmo: isGizmoControl,
   } = useControls(
     'Debug',
     {
       Grid: { value: false },
       Stats: { value: true },
       Camera: { value: false },
+      Gizmo: { value: false },
     },
     { collapsed: true }
   );
@@ -65,22 +47,30 @@ const MinecraftSection = () => {
           fov: 75,
           near: 0.1,
           far: 1000,
-          position: [width * 0.15, height + 10, -width * 0.8],
+          position: [
+            dimensions.width * 0.15,
+            dimensions.height + 10,
+            -dimensions.width * 0.8,
+          ],
         }}
         shadows
         scene={{
           background: new Color('#80a0e0'),
         }}
       >
-        {Grid && <gridHelper args={[128, 128]} />}
-        <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
-          <GizmoViewport />
-        </GizmoHelper>
-        <World width={width} height={height} terrainData={terrainDataRef} />
-        <Lights />
-        <Player world={terrainDataRef} />
-        {StatsControl && <Stats />}
-        {CameraControl && <CameraMonitor />}
+        {isGridControl && <gridHelper args={[128, 128]} />}
+        {isGizmoControl && (
+          <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
+            <GizmoViewport />
+          </GizmoHelper>
+        )}
+        <WorldManagerProvider>
+          <World />
+          <Lights />
+          <Player />
+        </WorldManagerProvider>
+        {isStatsControl && <Stats />}
+        {isCameraControl && <CameraMonitor />}
       </Canvas>
     </section>
   );

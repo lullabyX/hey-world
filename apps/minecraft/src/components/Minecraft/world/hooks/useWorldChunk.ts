@@ -1,12 +1,12 @@
 import { RefObject, useCallback } from 'react';
 import { Block, BlockType, createBlock } from '@/lib/block';
 
-export type TerrainType = Block[][][];
+export type ChuckType = Block[][][];
 
-export const useWorld = (
+export const useWorldChunk = (
   width: number,
   height: number,
-  terrainData: RefObject<TerrainType>
+  terrainData: RefObject<ChuckType>
 ) => {
   const isBound = useCallback(
     (x: number, y: number, z: number) => {
