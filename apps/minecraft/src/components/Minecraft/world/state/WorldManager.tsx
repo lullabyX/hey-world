@@ -14,6 +14,10 @@ type WorldManager = {
   unregisterChunk: (cx: number, cz: number) => void;
   getBlockAt: (x: number, y: number, z: number) => Block | null;
   getChunkAt: (x: number, z: number) => WorldChunkHandle | undefined;
+  listChunks: () => string[];
+  getChunkKey: (x: number, z: number) => string;
+  getChunkCoords: (x: number, z: number) => { cx: number; cz: number };
+  chunkKeyFor: (cx: number, cz: number) => string;
 };
 
 export const WorldContext = createContext<WorldManager | null>(null);
@@ -63,6 +67,32 @@ export const WorldManagerProvider = ({
     [dimensions.width, getChunkAt]
   );
 
+  const listChunks = useCallback(() => {
+    return Array.from(chunkRegistryRef.current.keys());
+  }, []);
+
+  const getChunkCoords = useCallback(
+    (x: number, z: number) => {
+      const width = dimensions.width;
+      const cx = Math.floor(x / width);
+      const cz = Math.floor(z / width);
+
+      return { cx, cz };
+    },
+    [dimensions.width]
+  );
+
+  const getChunkKey = useCallback(
+    (x: number, z: number) => {
+      const width = dimensions.width;
+      const cx = Math.floor(x / width);
+      const cz = Math.floor(z / width);
+
+      return chunkKeyFor(cx, cz);
+    },
+    [chunkKeyFor, dimensions.width]
+  );
+
   const value = useMemo<WorldManager>(
     () => ({
       chunkRegistryRef,
@@ -73,8 +103,19 @@ export const WorldManagerProvider = ({
         chunkRegistryRef.current.delete(chunkKeyFor(cx, cz)),
       getBlockAt,
       getChunkAt,
+      listChunks,
+      getChunkKey,
+      getChunkCoords,
+      chunkKeyFor,
     }),
-    [getBlockAt, chunkKeyFor, getChunkAt]
+    [
+      getBlockAt,
+      chunkKeyFor,
+      getChunkAt,
+      listChunks,
+      getChunkKey,
+      getChunkCoords,
+    ]
   );
 
   return (

@@ -65,8 +65,8 @@ const MinecraftSection = () => {
           </GizmoHelper>
         )}
         <WorldManagerProvider>
-          <World />
           <Lights />
+          <World />
           <Player />
         </WorldManagerProvider>
         {isStatsControl && <Stats />}
