@@ -26,6 +26,7 @@ import useWorldManager from '../hooks/useWorldManger';
 
 export type WorldChunkHandle = {
   terrainDataRef: React.RefObject<ChuckType>;
+  loadedRef: React.RefObject<boolean>;
   getBlockAt: (x: number, y: number, z: number) => Block | null;
   setBlockTypeAt: (x: number, y: number, z: number, type: BlockType) => void;
   setBlockInstanceIdAt: (x: number, y: number, z: number, id: number) => void;
@@ -65,6 +66,9 @@ const WorldChunk = ({
     { cols: 16, rows: 16 },
     1
   );
+
+  const loadedRef = useRef(false);
+
   const {
     getBlockAt,
     setBlockTypeAt,
@@ -315,6 +319,7 @@ const WorldChunk = ({
   const handle = useMemo<WorldChunkHandle>(
     () => ({
       terrainDataRef: terrainData,
+      loadedRef,
       getBlockAt,
       setBlockTypeAt,
       setBlockInstanceIdAt,
@@ -350,10 +355,16 @@ const WorldChunk = ({
   // Initialize terrain and generate mesh when parameters change
   useLayoutEffect(() => {
     const rng = new RandomNumberGenerator(seed);
-    initializeTerrain();
-    generateResources({ rng });
-    generateTerrain({ rng });
-    generateMesh();
+    requestIdleCallback(
+      () => {
+        initializeTerrain();
+        generateResources({ rng });
+        generateTerrain({ rng });
+        generateMesh();
+        loadedRef.current = true;
+      },
+      { timeout: 1000 }
+    );
   }, [
     initializeTerrain,
     generateResources,

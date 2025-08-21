@@ -1,32 +1,33 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useState } from 'react';
 import { useControls } from 'leva';
 import { dimensionsAtom } from '@/lib/store';
 import { useAtom } from 'jotai';
 import WorldChunk from './WorldChunk';
+import useWorldManager from '../hooks/useWorldManger';
+import { useFrame } from '@react-three/fiber';
 
 const World = () => {
-  const [chunks, setChunks] = useState<React.ReactNode[]>([]);
+  const [chunks, setChunks] = useState<React.ReactElement[]>([]);
 
-  const [dimensions, setDimensions] = useAtom(dimensionsAtom);
+  const [dimensions] = useAtom(dimensionsAtom);
 
-  const { width, height } = useControls('World', {
-    width: {
-      value: dimensions.width,
-      min: 16,
-      max: 128,
-      step: 2,
-    },
-    height: {
-      value: dimensions.height,
-      min: 4,
-      max: 32,
-      step: 2,
-    },
-  });
+  const { playerPositionRef, getChunkCoords, chunkKeyFor } = useWorldManager();
 
-  const { scale, magnitude, offset, seed } = useControls(
+  const {
+    scale,
+    magnitude,
+    offset,
+    seed,
+    'Draw Distance': drawDistance,
+  } = useControls(
     'Terrain',
     {
+      'Draw Distance': {
+        value: 2,
+        min: 0,
+        max: 10,
+        step: 1,
+      },
       scale: {
         value: 30,
         min: 20,
@@ -55,32 +56,84 @@ const World = () => {
     { collapsed: true }
   );
 
-  useEffect(() => {
-    setDimensions({ width, height });
-  }, [width, height, setDimensions]);
+  const generateChunks = useCallback(() => {
+    const { cx, cz } = getChunkCoords(
+      playerPositionRef.current.x,
+      playerPositionRef.current.z
+    );
 
-  useLayoutEffect(() => {
-    const chunks = [];
-    for (let x = -1; x <= 1; x++) {
-      for (let z = -1; z <= 1; z++) {
-        const chunk = (
-          <WorldChunk
-            key={`${x}-${z}`}
-            width={dimensions.width}
-            height={dimensions.height}
-            xPosition={x}
-            zPosition={z}
-            scale={scale}
-            magnitude={magnitude}
-            offset={offset}
-            seed={seed}
-          />
-        );
-        chunks.push(chunk);
+    // Build desired chunk coordinates around the player's current chunk
+    const desiredCoords: { x: number; z: number }[] = [];
+    for (let dx = -drawDistance; dx <= drawDistance; dx++) {
+      for (let dz = -drawDistance; dz <= drawDistance; dz++) {
+        desiredCoords.push({ x: cx + dx, z: cz + dz });
       }
     }
-    setChunks(chunks);
-  }, [dimensions.width, dimensions.height, scale, magnitude, offset, seed]);
+    setChunks((prev) => {
+      const prevByKey = new Map<string, React.ReactElement>();
+      for (const el of prev) {
+        const k = el.key != null ? String(el.key) : '';
+        if (k) prevByKey.set(k, el);
+      }
+
+      const next: React.ReactElement[] = [];
+      const nextKeys: string[] = [];
+      for (const { x, z } of desiredCoords) {
+        const key = chunkKeyFor(x, z);
+        nextKeys.push(key);
+        const existing = prevByKey.get(key);
+        if (existing) {
+          next.push(existing);
+        } else {
+          next.push(
+            <WorldChunk
+              key={key}
+              width={dimensions.width}
+              height={dimensions.height}
+              xPosition={x}
+              zPosition={z}
+              scale={scale}
+              magnitude={magnitude}
+              offset={offset}
+              seed={seed}
+            />
+          );
+        }
+      }
+
+      // Avoid state updates if keys are unchanged
+      if (prev.length === next.length) {
+        const prevKeys = prev
+          .map((p) => (p.key != null ? String(p.key) : ''))
+          .join('|');
+
+        const joinedNext = nextKeys.join('|');
+        if (prevKeys === joinedNext) {
+          return prev;
+        }
+      }
+
+      return next;
+    });
+  }, [
+    dimensions,
+    scale,
+    magnitude,
+    offset,
+    seed,
+    drawDistance,
+    playerPositionRef,
+    chunkKeyFor,
+    getChunkCoords,
+  ]);
+
+  useLayoutEffect(() => {
+    generateChunks();
+  }, [generateChunks]);
+
+  useFrame(() => {
+    generateChunks();
+  });
 
   return <group>{chunks}</group>;
 };

@@ -1,6 +1,6 @@
 import { atom } from 'jotai';
 
 export const dimensionsAtom = atom({
-  width: 64,
+  width: 32,
   height: 16,
 });

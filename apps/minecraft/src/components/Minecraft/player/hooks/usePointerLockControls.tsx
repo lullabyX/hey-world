@@ -130,7 +130,7 @@ const useControl = ({
           }
           break;
         case 'r':
-          playerRef.current?.position.set(0, 10, 10);
+          playerRef.current?.position.set(32, 32, 32);
           playerVelocityRef.current = new Vector3(0, 0, 0);
           break;
       }

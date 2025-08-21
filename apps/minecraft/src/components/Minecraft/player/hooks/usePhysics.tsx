@@ -51,7 +51,15 @@ const usePhysics = ({
   );
 
   const updatePlayerPosition = useCallback(() => {
-    if (!playerBodyRef.current || !playerRef.current) {
+    if (!playerRef.current) {
+      return;
+    }
+    playerPositionRef.current.set(
+      playerRef.current.position.x,
+      adjustedPlayerYPosition(playerRef.current.position.y),
+      playerRef.current.position.z
+    );
+    if (!playerBodyRef.current) {
       return;
     }
     playerBodyRef.current.position.set(
@@ -59,7 +67,6 @@ const usePhysics = ({
       adjustedPlayerYPosition(playerRef.current.position.y),
       playerRef.current.position.z
     );
-    playerPositionRef.current.copy(playerBodyRef.current.position);
   }, [playerBodyRef, playerRef, adjustedPlayerYPosition, playerPositionRef]);
 
   const isPointInBoundingBox = useCallback(
