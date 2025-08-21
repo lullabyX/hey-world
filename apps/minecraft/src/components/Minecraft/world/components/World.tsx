@@ -132,7 +132,7 @@ const World = () => {
   }, [generateChunks]);
 
   useFrame(() => {
-    requestIdleCallback(generateChunks, { timeout: 1000 });
+    generateChunks();
   });
 
   return <group>{chunks}</group>;

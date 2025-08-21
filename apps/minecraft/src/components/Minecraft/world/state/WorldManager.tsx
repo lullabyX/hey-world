@@ -62,6 +62,10 @@ export const WorldManagerProvider = ({
       const localX = ((x % width) + width) % width;
       const localZ = ((z % width) + width) % width;
 
+      if (!chunk.loadedRef.current) {
+        return null;
+      }
+
       return chunk.getBlockAt(localX, y, localZ);
     },
     [dimensions.width, getChunkAt]
