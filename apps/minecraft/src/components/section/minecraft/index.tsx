@@ -65,10 +65,10 @@ const MinecraftSection = () => {
           </GizmoHelper>
         )}
         <WorldManagerProvider>
-          <Lights />
+          <fog attach="fog" args={['#80a0e0', 40, 60]} />
           <World />
           <Player />
-          <fog attach="fog" args={['#80a0e0', 40, 60]} />
+          <Lights />
         </WorldManagerProvider>
         {isStatsControl && <Stats />}
         {isCameraControl && <CameraMonitor />}
