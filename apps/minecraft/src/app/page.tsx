@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col font-[family-name:var(--font-geist-sans)]">
       {/* Hero Section */}
-      <section className="flex flex-1 items-center justify-center bg-gradient-to-b from-background to-muted/20 px-8 py-16">
+      {/* <section className="flex flex-1 items-center justify-center bg-gradient-to-b from-background to-muted/20 px-8 py-16">
         <div className="max-w-4xl text-center">
           <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-7xl">
             Welcome to Minecraft World! ⛏️
@@ -21,13 +21,13 @@ export default function Home() {
             </button>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Minecraft Game Section */}
       <MinecraftSection />
 
       {/* Footer */}
-      <footer className="bg-muted px-8 py-12">
+      {/* <footer className="bg-muted px-8 py-12">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-8 md:grid-cols-3">
             <div>
@@ -91,7 +91,7 @@ export default function Home() {
             <p>&copy; YOLO.</p>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 }

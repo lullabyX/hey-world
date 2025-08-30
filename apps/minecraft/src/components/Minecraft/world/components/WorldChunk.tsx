@@ -13,7 +13,10 @@ import {
   InstancedMesh,
   Matrix4,
   MeshLambertMaterial,
+  Raycaster,
+  Sphere,
   Vector2,
+  Vector3,
   WebGLProgramParametersWithUniforms,
 } from 'three';
 import { createAtlasOnBeforeCompile, loadTextureTiles } from '@/lib/texture';
@@ -23,6 +26,7 @@ import { Block, BlockType, getResourceEntries } from '@/lib/block';
 import { RandomNumberGenerator } from '@/helpers/random-number-generator';
 import { ChuckType, useWorldChunk } from '../hooks/useWorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
+import { useFrame, useThree } from '@react-three/fiber';
 
 export type WorldChunkHandle = {
   terrainDataRef: React.RefObject<ChuckType>;
@@ -68,6 +72,9 @@ const WorldChunk = ({
   );
 
   const loadedRef = useRef(false);
+
+  const camera = useThree((s) => s.camera);
+  const raycaster = useThree((s) => s.raycaster);
 
   const {
     getBlockAt,
@@ -250,7 +257,7 @@ const WorldChunk = ({
           const _isBlockVisible = isBlockVisible(x, y, z);
           if (notEmptyBlock && _isBlockVisible) {
             // Center the world around origin
-            matrix.setPosition(x + xOffset, y, z + zOffset);
+            matrix.setPosition(x, y, z);
 
             const instanceId = meshRef.current.count;
             setBlockInstanceIdAt(x, y, z, instanceId);
@@ -274,6 +281,10 @@ const WorldChunk = ({
         }
       }
     }
+
+    meshRef.current.position.set(xOffset, 0, zOffset);
+    // meshRef.current.computeBoundingBox();
+    meshRef.current.computeBoundingSphere();
 
     meshRef.current.instanceMatrix.needsUpdate = true;
 
@@ -385,6 +396,25 @@ const WorldChunk = ({
     return () => unregisterChunk(xPosition, zPosition);
   }, [registerChunk, unregisterChunk, handle, xPosition, zPosition]);
 
+  // useEffect(() => {
+  //   const handlePointerDown = (ev: PointerEvent) => {
+  //     if (ev.button !== 0) return;
+  //     if (!meshRef.current) return;
+  //     camera.updateWorldMatrix(true, false);
+  //     raycaster.setFromCamera(new Vector2(0, 0), camera);
+  //     const hits = raycaster.intersectObject(meshRef.current, true);
+  //     if (hits.length) {
+  //       console.log('locked click', hits[0]);
+  //     } else {
+  //       console.log('locked click: no hit');
+  //     }
+  //   };
+  //   document.addEventListener('pointerdown', handlePointerDown);
+  //   return () => {
+  //     document.removeEventListener('pointerdown', handlePointerDown);
+  //   };
+  // }, [camera, raycaster]);
+
   return (
     <instancedMesh
       ref={meshRef}
@@ -392,9 +422,12 @@ const WorldChunk = ({
       frustumCulled={false}
       castShadow
       receiveShadow
+      onPointerDown={(e) => {
+        console.log('pointer down', e);
+      }}
     >
-      <meshLambertMaterial ref={materialRef} />
       <boxGeometry args={[1, 1, 1]} />
+      <meshLambertMaterial ref={materialRef} />
     </instancedMesh>
   );
 };

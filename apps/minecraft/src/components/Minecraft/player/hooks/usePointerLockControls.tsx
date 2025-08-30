@@ -5,7 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useControls } from 'leva';
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import type { ForwardedRef, RefObject } from 'react';
-import { Mesh, PerspectiveCamera, Vector3 } from 'three';
+import { Mesh, PerspectiveCamera, Raycaster, Vector2, Vector3 } from 'three';
 import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib';
 import CollisionDebug from '@/components/helpers/CollisionDebug';
 import PointDebug from '@/components/helpers/PointDebug';
@@ -47,11 +47,40 @@ const useControl = ({
       'Point Debug': { value: false },
     });
 
-  const { handleFullscreen } = useFullscreen({
-    id: 'minecraft-main-canvas',
-  });
+  // const { handleFullscreen } = useFullscreen({
+  //   id: 'minecraft-main-canvas',
+  // });
 
-  const { gl } = useThree();
+  const handleFullscreen = useCallback(() => {
+    console.log('handleFullscreen');
+  }, []);
+
+  const { gl, scene } = useThree();
+
+  useEffect(() => {
+    const rc = new Raycaster();
+
+    const handlePointerDown = (ev: PointerEvent) => {
+      if (ev.button !== 0) return;
+      if (!document.pointerLockElement) return;
+      if (!playerRef.current) return;
+
+      console.log('PLC', playerRef.current);
+      rc.setFromCamera(new Vector2(0, 0), playerRef.current); // correct world origin+dir
+      const hits = rc.intersectObjects(scene.children, true);
+      const hit = hits.find((h) => (h.object as any).isInstancedMesh);
+      console.log(rc.ray);
+      console.log(hits);
+      if (hit) {
+        console.log('PLC hit', hit);
+      } else {
+        console.log('locked click: no hit');
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [playerRef.current, scene]);
 
   const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } = usePhysics(
     {
