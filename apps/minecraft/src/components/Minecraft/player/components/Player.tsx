@@ -1,7 +1,7 @@
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { useRef } from 'react';
 import { Mesh, PerspectiveCamera as PerspectiveCameraType } from 'three';
-import usePointerLockControls from '../hooks/usePointerLockControls';
+import usePointerLockControls from '../hooks/useControls';
 import { useControls } from 'leva';
 import { playerHeight, playerRadius } from '@/lib/constants';
 import CameraPosition from '@/components/helpers/CameraPosition';

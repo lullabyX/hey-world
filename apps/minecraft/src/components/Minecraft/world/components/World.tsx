@@ -11,7 +11,8 @@ const World = () => {
 
   const [dimensions] = useAtom(dimensionsAtom);
 
-  const { playerPositionRef, getChunkCoords, chunkKeyFor } = useWorldManager();
+  const { playerPositionRef, getChunkCoords, chunkKeyFor, chunksRef } =
+    useWorldManager();
 
   const {
     scale,
@@ -135,7 +136,7 @@ const World = () => {
     generateChunks();
   });
 
-  return <group>{chunks}</group>;
+  return <group ref={chunksRef}>{chunks}</group>;
 };
 
 export default World;

@@ -27,7 +27,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased`}
       >
         <ThemeProvider>
-          {/* <SiteHeader
+          <SiteHeader
             title="Minecraft World!"
             titleHref="/"
             pages={[
@@ -35,7 +35,7 @@ export default function RootLayout({
               { name: 'Servers', href: '/servers' },
               { name: 'Guides', href: '/guides' },
             ]}
-          /> */}
+          />
           {children}
         </ThemeProvider>
       </body>

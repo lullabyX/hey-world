@@ -11,6 +11,7 @@ import CollisionDebug from '@/components/helpers/CollisionDebug';
 import PointDebug from '@/components/helpers/PointDebug';
 import { useFullscreen } from '@base/components/src';
 import usePhysics from './usePhysics';
+import { useWorldManager } from '../../world';
 
 const useControl = ({
   playerRef,
@@ -41,46 +42,26 @@ const useControl = ({
 
   const [isLocked, setIsLocked] = useState(false);
 
+  const raycaster = new Raycaster(
+    new Vector3(0, 0, 0),
+    new Vector3(0, 0, 0),
+    0,
+    3
+  );
+
   const { 'Collision Debug': isCollisionDebug, 'Point Debug': isPointDebug } =
     useControls('Debug', {
       'Collision Debug': { value: false },
       'Point Debug': { value: false },
     });
 
-  // const { handleFullscreen } = useFullscreen({
-  //   id: 'minecraft-main-canvas',
-  // });
+  const { gl } = useThree();
 
-  const handleFullscreen = useCallback(() => {
-    console.log('handleFullscreen');
-  }, []);
+  const { handleFullscreen } = useFullscreen({
+    id: 'minecraft-main-canvas',
+  });
 
-  const { gl, scene } = useThree();
-
-  useEffect(() => {
-    const rc = new Raycaster();
-
-    const handlePointerDown = (ev: PointerEvent) => {
-      if (ev.button !== 0) return;
-      if (!document.pointerLockElement) return;
-      if (!playerRef.current) return;
-
-      console.log('PLC', playerRef.current);
-      rc.setFromCamera(new Vector2(0, 0), playerRef.current); // correct world origin+dir
-      const hits = rc.intersectObjects(scene.children, true);
-      const hit = hits.find((h) => (h.object as any).isInstancedMesh);
-      console.log(rc.ray);
-      console.log(hits);
-      if (hit) {
-        console.log('PLC hit', hit);
-      } else {
-        console.log('locked click: no hit');
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [playerRef.current, scene]);
+  const { chunksRef } = useWorldManager();
 
   const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } = usePhysics(
     {
@@ -191,6 +172,19 @@ const useControl = ({
     }
   }, []);
 
+  const handlePointerOver = useCallback(() => {
+    if (!isLocked) return;
+    if (!playerRef.current) return;
+    if (!chunksRef.current) return;
+
+    raycaster.setFromCamera(new Vector2(0, 0), playerRef.current); // correct world origin+dir
+    const hits = raycaster.intersectObject(chunksRef.current, true);
+    const hit = hits.find((h) => (h.object as any).isInstancedMesh);
+    if (hit) {
+      console.log('PLC hit', hit);
+    }
+  }, [isLocked, playerRef, chunksRef]);
+
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
@@ -198,10 +192,11 @@ const useControl = ({
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [handleKeyDown, handleKeyUp]);
+  }, [handleKeyDown, handleKeyUp, handlePointerOver]);
 
   useFrame((_, delta) => {
     updatePhysics(delta);
+    handlePointerOver();
   });
 
   const controls = playerRef.current ? (
@@ -231,36 +226,5 @@ const useControl = ({
     controlsRef,
   };
 };
-
-export const Control = forwardRef(
-  (
-    {
-      camera,
-      handleUnlock,
-    }: {
-      camera: PerspectiveCamera | null;
-      handleUnlock: () => void;
-    },
-    ref: ForwardedRef<PointerLockControlsImpl | null>
-  ) => {
-    const { gl } = useThree();
-
-    if (!camera) {
-      return null;
-    }
-
-    return (
-      <PointerLockControls
-        ref={ref}
-        selector="#__no_pointer_lock_controls__"
-        camera={camera}
-        onUnlock={handleUnlock}
-        domElement={gl.domElement}
-      />
-    );
-  }
-);
-
-Control.displayName = 'PlayerControl';
 
 export default useControl;

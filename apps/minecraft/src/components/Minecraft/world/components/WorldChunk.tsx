@@ -13,10 +13,7 @@ import {
   InstancedMesh,
   Matrix4,
   MeshLambertMaterial,
-  Raycaster,
-  Sphere,
   Vector2,
-  Vector3,
   WebGLProgramParametersWithUniforms,
 } from 'three';
 import { createAtlasOnBeforeCompile, loadTextureTiles } from '@/lib/texture';
@@ -26,7 +23,6 @@ import { Block, BlockType, getResourceEntries } from '@/lib/block';
 import { RandomNumberGenerator } from '@/helpers/random-number-generator';
 import { ChuckType, useWorldChunk } from '../hooks/useWorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
-import { useFrame, useThree } from '@react-three/fiber';
 
 export type WorldChunkHandle = {
   terrainDataRef: React.RefObject<ChuckType>;
@@ -72,9 +68,6 @@ const WorldChunk = ({
   );
 
   const loadedRef = useRef(false);
-
-  const camera = useThree((s) => s.camera);
-  const raycaster = useThree((s) => s.raycaster);
 
   const {
     getBlockAt,
@@ -395,25 +388,6 @@ const WorldChunk = ({
     registerChunk(xPosition, zPosition, handle);
     return () => unregisterChunk(xPosition, zPosition);
   }, [registerChunk, unregisterChunk, handle, xPosition, zPosition]);
-
-  // useEffect(() => {
-  //   const handlePointerDown = (ev: PointerEvent) => {
-  //     if (ev.button !== 0) return;
-  //     if (!meshRef.current) return;
-  //     camera.updateWorldMatrix(true, false);
-  //     raycaster.setFromCamera(new Vector2(0, 0), camera);
-  //     const hits = raycaster.intersectObject(meshRef.current, true);
-  //     if (hits.length) {
-  //       console.log('locked click', hits[0]);
-  //     } else {
-  //       console.log('locked click: no hit');
-  //     }
-  //   };
-  //   document.addEventListener('pointerdown', handlePointerDown);
-  //   return () => {
-  //     document.removeEventListener('pointerdown', handlePointerDown);
-  //   };
-  // }, [camera, raycaster]);
 
   return (
     <instancedMesh
