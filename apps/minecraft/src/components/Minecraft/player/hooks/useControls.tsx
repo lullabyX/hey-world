@@ -214,12 +214,25 @@ const useControl = ({
     }
   }, [isLocked, playerRef, chunksRef, selectionHelperRef]);
 
+  const handlePointerDown = useCallback(
+    (ev: MouseEvent) => {
+      if (!isLocked) return;
+      if (!selectedCoordsRef.current) return;
+      if (ev.button !== 0) return;
+
+      console.log(selectedCoordsRef.current);
+    },
+    [selectedCoordsRef, isLocked]
+  );
+
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('mousedown', handlePointerDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
+      document.addEventListener('mousedown', handlePointerDown);
     };
   }, [handleKeyDown, handleKeyUp, handlePointerOver]);
 
