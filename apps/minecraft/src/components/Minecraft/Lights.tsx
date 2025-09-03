@@ -47,10 +47,11 @@ const Lights = () => {
     if (!dirLightRef.current) {
       return;
     }
-    scene.add(dirLightRef.current.target);
+    const sun = dirLightRef.current.target;
+    scene.add(sun);
 
     return () => {
-      scene.remove(dirLightRef.current.target);
+      scene.remove(sun);
     };
   }, [scene, dirLightRef]);
 

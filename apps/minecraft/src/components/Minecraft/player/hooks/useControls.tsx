@@ -3,14 +3,23 @@
 import { PointerLockControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useControls } from 'leva';
-import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
-import type { ForwardedRef, RefObject } from 'react';
-import { Mesh, PerspectiveCamera, Vector3 } from 'three';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
+import {
+  InstancedMesh,
+  Matrix4,
+  Mesh,
+  PerspectiveCamera,
+  Raycaster,
+  Vector2,
+  Vector3,
+} from 'three';
 import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib';
 import CollisionDebug from '@/components/helpers/CollisionDebug';
 import PointDebug from '@/components/helpers/PointDebug';
 import { useFullscreen } from '@base/components/src';
 import usePhysics from './usePhysics';
+import { useWorldManager } from '../../world';
 
 const useControl = ({
   playerRef,
@@ -38,6 +47,8 @@ const useControl = ({
 
   const inputRef = useRef<Vector3>(new Vector3(0, 0, 0));
   const playerVelocityRef = useRef(new Vector3(0, 0, 0));
+  const selectedCoordsRef = useRef<Vector3>(new Vector3(0, 0, 0));
+  const selectionHelperRef = useRef<Mesh>(null);
 
   const [isLocked, setIsLocked] = useState(false);
 
@@ -47,11 +58,13 @@ const useControl = ({
       'Point Debug': { value: false },
     });
 
+  const { gl } = useThree();
+
   const { handleFullscreen } = useFullscreen({
     id: 'minecraft-main-canvas',
   });
 
-  const { gl } = useThree();
+  const { chunksRef } = useWorldManager();
 
   const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } = usePhysics(
     {
@@ -162,6 +175,44 @@ const useControl = ({
     }
   }, []);
 
+  const handlePointerOver = useCallback(() => {
+    if (!isLocked) return;
+    if (!playerRef.current) return;
+    if (!chunksRef.current) return;
+    if (!selectionHelperRef.current) return;
+
+    const raycaster = new Raycaster(
+      new Vector3(0, 0, 0),
+      new Vector3(0, 0, 0),
+      0,
+      3
+    );
+
+    raycaster.setFromCamera(new Vector2(0, 0), playerRef.current); // correct world origin+dir
+    const intersections = raycaster.intersectObject(chunksRef.current, true);
+
+    const intersection = intersections[0];
+
+    if (
+      intersection &&
+      intersection.instanceId &&
+      intersection.object instanceof InstancedMesh
+    ) {
+      const chunkPosition = intersection.object.position;
+
+      const blockMatrix = new Matrix4();
+      intersection.object.getMatrixAt(intersection.instanceId, blockMatrix);
+
+      selectedCoordsRef.current = chunkPosition.clone();
+      selectedCoordsRef.current.applyMatrix4(blockMatrix);
+
+      selectionHelperRef.current.position.copy(selectedCoordsRef.current);
+      selectionHelperRef.current.visible = true;
+    } else {
+      selectionHelperRef.current.visible = false;
+    }
+  }, [isLocked, playerRef, chunksRef, selectionHelperRef]);
+
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
@@ -169,10 +220,11 @@ const useControl = ({
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [handleKeyDown, handleKeyUp]);
+  }, [handleKeyDown, handleKeyUp, handlePointerOver]);
 
   useFrame((_, delta) => {
     updatePhysics(delta);
+    handlePointerOver();
   });
 
   const controls = playerRef.current ? (
@@ -192,6 +244,14 @@ const useControl = ({
         />
       )}
       {isPointDebug && <PointDebug positionsRef={collisionsRef} wireframe />}
+      <mesh
+        ref={selectionHelperRef}
+        position={playerRef.current?.position}
+        visible={false}
+      >
+        <boxGeometry args={[1.001, 1.001, 1.001]} />
+        <meshBasicMaterial color="white" transparent opacity={0.3} />
+      </mesh>
     </group>
   ) : null;
 
@@ -202,36 +262,5 @@ const useControl = ({
     controlsRef,
   };
 };
-
-export const Control = forwardRef(
-  (
-    {
-      camera,
-      handleUnlock,
-    }: {
-      camera: PerspectiveCamera | null;
-      handleUnlock: () => void;
-    },
-    ref: ForwardedRef<PointerLockControlsImpl | null>
-  ) => {
-    const { gl } = useThree();
-
-    if (!camera) {
-      return null;
-    }
-
-    return (
-      <PointerLockControls
-        ref={ref}
-        selector="#__no_pointer_lock_controls__"
-        camera={camera}
-        onUnlock={handleUnlock}
-        domElement={gl.domElement}
-      />
-    );
-  }
-);
-
-Control.displayName = 'PlayerControl';
 
 export default useControl;

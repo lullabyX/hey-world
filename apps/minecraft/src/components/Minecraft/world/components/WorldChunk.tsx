@@ -250,7 +250,7 @@ const WorldChunk = ({
           const _isBlockVisible = isBlockVisible(x, y, z);
           if (notEmptyBlock && _isBlockVisible) {
             // Center the world around origin
-            matrix.setPosition(x + xOffset, y, z + zOffset);
+            matrix.setPosition(x, y, z);
 
             const instanceId = meshRef.current.count;
             setBlockInstanceIdAt(x, y, z, instanceId);
@@ -274,6 +274,10 @@ const WorldChunk = ({
         }
       }
     }
+
+    meshRef.current.position.set(xOffset, 0, zOffset);
+    // meshRef.current.computeBoundingBox();
+    meshRef.current.computeBoundingSphere();
 
     meshRef.current.instanceMatrix.needsUpdate = true;
 
@@ -393,8 +397,8 @@ const WorldChunk = ({
       castShadow
       receiveShadow
     >
-      <meshLambertMaterial ref={materialRef} />
       <boxGeometry args={[1, 1, 1]} />
+      <meshLambertMaterial ref={materialRef} />
     </instancedMesh>
   );
 };

@@ -3,11 +3,12 @@
 import { dimensionsAtom } from '@/lib/store';
 import { useAtom } from 'jotai';
 import { createContext, RefObject, useCallback, useMemo, useRef } from 'react';
-import { Vector3 } from 'three';
+import { Group, Vector3 } from 'three';
 import { WorldChunkHandle } from '../components/WorldChunk';
 import { Block } from '@/lib/block';
 
 type WorldManager = {
+  chunksRef: RefObject<Group | null>;
   chunkRegistryRef: RefObject<Map<string, WorldChunkHandle>>;
   playerPositionRef: RefObject<Vector3>;
   registerChunk: (cx: number, cz: number, handle: WorldChunkHandle) => void;
@@ -29,6 +30,7 @@ export const WorldManagerProvider = ({
 }) => {
   const [dimensions] = useAtom(dimensionsAtom);
 
+  const chunksRef = useRef<Group>(null);
   const chunkRegistryRef = useRef(new Map<string, WorldChunkHandle>());
   const playerPositionRef = useRef(new Vector3(32, 32, 32));
 
@@ -99,6 +101,7 @@ export const WorldManagerProvider = ({
 
   const value = useMemo<WorldManager>(
     () => ({
+      chunksRef: chunksRef,
       chunkRegistryRef,
       playerPositionRef,
       registerChunk: (cx, cz, handle) =>
@@ -113,6 +116,7 @@ export const WorldManagerProvider = ({
       chunkKeyFor,
     }),
     [
+      chunksRef,
       getBlockAt,
       chunkKeyFor,
       getChunkAt,
