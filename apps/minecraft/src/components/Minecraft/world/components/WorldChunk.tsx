@@ -396,9 +396,6 @@ const WorldChunk = ({
       frustumCulled={false}
       castShadow
       receiveShadow
-      onPointerDown={(e) => {
-        console.log('pointer down', e);
-      }}
     >
       <boxGeometry args={[1, 1, 1]} />
       <meshLambertMaterial ref={materialRef} />
