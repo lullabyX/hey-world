@@ -64,7 +64,7 @@ const useControl = ({
     id: 'minecraft-main-canvas',
   });
 
-  const { chunksRef } = useWorldManager();
+  const { chunksRef, removeBlockAt } = useWorldManager();
 
   const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } = usePhysics(
     {
@@ -176,7 +176,7 @@ const useControl = ({
   }, []);
 
   const handlePointerOver = useCallback(() => {
-    if (!isLocked) return;
+    if (!controlsRef.current?.isLocked) return;
     if (!playerRef.current) return;
     if (!chunksRef.current) return;
     if (!selectionHelperRef.current) return;
@@ -191,7 +191,7 @@ const useControl = ({
     raycaster.setFromCamera(new Vector2(0, 0), playerRef.current); // correct world origin+dir
     const intersections = raycaster.intersectObject(chunksRef.current, true);
 
-    const intersection = intersections[0];
+    const intersection = intersections?.[0];
 
     if (
       intersection &&
@@ -212,17 +212,18 @@ const useControl = ({
       selectedCoordsRef.current = null;
       selectionHelperRef.current.visible = false;
     }
-  }, [isLocked, playerRef, chunksRef, selectionHelperRef]);
+  }, [controlsRef, playerRef, chunksRef, selectionHelperRef]);
 
   const handlePointerDown = useCallback(
     (ev: MouseEvent) => {
-      if (!isLocked) return;
+      if (!controlsRef.current?.isLocked) return;
       if (!selectedCoordsRef.current) return;
       if (ev.button !== 0) return;
 
-      console.log(selectedCoordsRef.current);
+      const coords = selectedCoordsRef.current;
+      removeBlockAt(coords.x, coords.y, coords.y);
     },
-    [selectedCoordsRef, isLocked]
+    [selectedCoordsRef, controlsRef]
   );
 
   useEffect(() => {

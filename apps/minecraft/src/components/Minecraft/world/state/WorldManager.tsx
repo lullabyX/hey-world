@@ -19,6 +19,7 @@ type WorldManager = {
   getChunkKey: (x: number, z: number) => string;
   getChunkCoords: (x: number, z: number) => { cx: number; cz: number };
   chunkKeyFor: (cx: number, cz: number) => string;
+  removeBlockAt: (x: number, y: number, z: number) => void;
 };
 
 export const WorldContext = createContext<WorldManager | null>(null);
@@ -39,44 +40,6 @@ export const WorldManagerProvider = ({
     []
   );
 
-  const getChunkAt = useCallback(
-    (x: number, z: number) => {
-      const width = dimensions.width;
-
-      const chunkX = Math.floor(x / width);
-      const chunkZ = Math.floor(z / width);
-
-      return chunkRegistryRef.current.get(chunkKeyFor(chunkX, chunkZ));
-    },
-    [dimensions.width, chunkRegistryRef, chunkKeyFor]
-  );
-
-  const getBlockAt = useCallback(
-    (x: number, y: number, z: number) => {
-      const chunk = getChunkAt(x, z);
-
-      if (!chunk) {
-        return null;
-      }
-
-      const width = dimensions.width;
-
-      const localX = ((x % width) + width) % width;
-      const localZ = ((z % width) + width) % width;
-
-      if (!chunk.loadedRef.current) {
-        return null;
-      }
-
-      return chunk.getBlockAt(localX, y, localZ);
-    },
-    [dimensions.width, getChunkAt]
-  );
-
-  const listChunks = useCallback(() => {
-    return Array.from(chunkRegistryRef.current.keys());
-  }, []);
-
   const getChunkCoords = useCallback(
     (x: number, z: number) => {
       const width = dimensions.width;
@@ -90,14 +53,63 @@ export const WorldManagerProvider = ({
 
   const getChunkKey = useCallback(
     (x: number, z: number) => {
-      const width = dimensions.width;
-      const cx = Math.floor(x / width);
-      const cz = Math.floor(z / width);
+      const { cx, cz } = getChunkCoords(x, z);
 
       return chunkKeyFor(cx, cz);
     },
-    [chunkKeyFor, dimensions.width]
+    [chunkKeyFor, getChunkCoords]
   );
+
+  const getChunkAt = useCallback(
+    (x: number, z: number) => {
+      return chunkRegistryRef.current.get(getChunkKey(x, z));
+    },
+    [chunkRegistryRef, getChunkKey]
+  );
+
+  const getBlockLocalCoords = useCallback(
+    (x: number, y: number, z: number) => {
+      const width = dimensions.width;
+
+      const localX = ((x % width) + width) % width;
+      const localZ = ((z % width) + width) % width;
+
+      return { localX, localY: y, localZ };
+    },
+    [dimensions]
+  );
+
+  const getBlockAt = useCallback(
+    (x: number, y: number, z: number) => {
+      const chunk = getChunkAt(x, z);
+
+      if (!chunk) {
+        return null;
+      }
+
+      if (!chunk.loadedRef.current) {
+        return null;
+      }
+
+      const { localX, localY, localZ } = getBlockLocalCoords(x, y, z);
+
+      return chunk.getBlockAt(localX, localY, localZ);
+    },
+    [getChunkAt, getBlockLocalCoords]
+  );
+
+  const removeBlockAt = useCallback(
+    (x: number, y: number, z: number) => {
+      const block = getBlockAt(x, y, z);
+
+      console.log(block);
+    },
+    [getBlockAt]
+  );
+
+  const listChunks = useCallback(() => {
+    return Array.from(chunkRegistryRef.current.keys());
+  }, []);
 
   const value = useMemo<WorldManager>(
     () => ({
@@ -114,6 +126,7 @@ export const WorldManagerProvider = ({
       getChunkKey,
       getChunkCoords,
       chunkKeyFor,
+      removeBlockAt,
     }),
     [
       chunksRef,
@@ -123,6 +136,7 @@ export const WorldManagerProvider = ({
       listChunks,
       getChunkKey,
       getChunkCoords,
+      removeBlockAt,
     ]
   );
 
