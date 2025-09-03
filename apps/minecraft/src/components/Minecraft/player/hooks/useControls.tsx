@@ -47,7 +47,7 @@ const useControl = ({
 
   const inputRef = useRef<Vector3>(new Vector3(0, 0, 0));
   const playerVelocityRef = useRef(new Vector3(0, 0, 0));
-  const selectedCoordsRef = useRef<Vector3>(new Vector3(0, 0, 0));
+  const selectedCoordsRef = useRef<Vector3>(null);
   const selectionHelperRef = useRef<Mesh>(null);
 
   const [isLocked, setIsLocked] = useState(false);
@@ -209,6 +209,7 @@ const useControl = ({
       selectionHelperRef.current.position.copy(selectedCoordsRef.current);
       selectionHelperRef.current.visible = true;
     } else {
+      selectedCoordsRef.current = null;
       selectionHelperRef.current.visible = false;
     }
   }, [isLocked, playerRef, chunksRef, selectionHelperRef]);
