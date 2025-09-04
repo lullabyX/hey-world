@@ -40,7 +40,7 @@ export const useWorldChunk = (
       if (!isBound(x, y, z)) {
         return;
       }
-      const existingBlock = getBlockAt(x, y, z);
+      const existingBlock = type === 'empty' ? null : getBlockAt(x, y, z);
       terrainData.current[x]![y]![z] = createBlock(
         type,
         existingBlock?.instanceId

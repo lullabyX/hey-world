@@ -221,9 +221,9 @@ const useControl = ({
       if (ev.button !== 0) return;
 
       const coords = selectedCoordsRef.current;
-      removeBlockAt(coords.x, coords.y, coords.y);
+      removeBlockAt(coords.x, coords.y, coords.z);
     },
-    [selectedCoordsRef, controlsRef]
+    [selectedCoordsRef, controlsRef, removeBlockAt]
   );
 
   useEffect(() => {
@@ -235,7 +235,7 @@ const useControl = ({
       document.removeEventListener('keyup', handleKeyUp);
       document.addEventListener('mousedown', handlePointerDown);
     };
-  }, [handleKeyDown, handleKeyUp, handlePointerOver]);
+  }, [handleKeyDown, handleKeyUp, handlePointerOver, handlePointerDown]);
 
   useFrame((_, delta) => {
     updatePhysics(delta);

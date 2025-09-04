@@ -100,11 +100,16 @@ export const WorldManagerProvider = ({
 
   const removeBlockAt = useCallback(
     (x: number, y: number, z: number) => {
-      const block = getBlockAt(x, y, z);
+      const chunk = getChunkAt(x, z);
 
-      console.log(block);
+      if (!chunk) return;
+      if (!chunk.loadedRef.current) return;
+
+      const { localX, localY, localZ } = getBlockLocalCoords(x, y, z);
+
+      chunk.removeBlockAt(localX, localY, localZ);
     },
-    [getBlockAt]
+    [getBlockLocalCoords, getChunkAt]
   );
 
   const listChunks = useCallback(() => {

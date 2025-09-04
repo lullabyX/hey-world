@@ -14,6 +14,7 @@ import {
   Matrix4,
   MeshLambertMaterial,
   Vector2,
+  Vector3,
   WebGLProgramParametersWithUniforms,
 } from 'three';
 import { createAtlasOnBeforeCompile, loadTextureTiles } from '@/lib/texture';
@@ -25,9 +26,11 @@ import { ChuckType, useWorldChunk } from '../hooks/useWorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
 
 export type WorldChunkHandle = {
+  meshRef: React.RefObject<InstancedMesh | null>;
   terrainDataRef: React.RefObject<ChuckType>;
   loadedRef: React.RefObject<boolean>;
   getBlockAt: (x: number, y: number, z: number) => Block | null;
+  removeBlockAt: (x: number, y: number, z: number) => void;
   setBlockTypeAt: (x: number, y: number, z: number, type: BlockType) => void;
   setBlockInstanceIdAt: (x: number, y: number, z: number, id: number) => void;
   isBlockVisible: (x: number, y: number, z: number) => boolean;
@@ -276,7 +279,6 @@ const WorldChunk = ({
     }
 
     meshRef.current.position.set(xOffset, 0, zOffset);
-    // meshRef.current.computeBoundingBox();
     meshRef.current.computeBoundingSphere();
 
     meshRef.current.instanceMatrix.needsUpdate = true;
@@ -320,11 +322,44 @@ const WorldChunk = ({
     zOffset,
   ]);
 
+  const removeBlockAt = useCallback(
+    (x: number, y: number, z: number) => {
+      const mesh = meshRef.current;
+      if (!mesh) return;
+
+      const block = getBlockAt(x, y, z);
+
+      if (block?.type === 'empty') return;
+      if (!block?.instanceId) return;
+
+      const instanceId = block.instanceId;
+
+      const lastMatrix = new Matrix4();
+      mesh.getMatrixAt(mesh.count - 1, lastMatrix);
+
+      const v = new Vector3();
+      v.applyMatrix4(lastMatrix);
+      setBlockInstanceIdAt(v.x, v.y, v.z, instanceId);
+
+      mesh.setMatrixAt(instanceId, lastMatrix);
+
+      mesh.count--;
+
+      mesh.computeBoundingSphere();
+      mesh.instanceMatrix.needsUpdate = true;
+
+      setBlockTypeAt(x, y, z, 'empty');
+    },
+    [meshRef, getBlockAt, setBlockTypeAt, setBlockInstanceIdAt]
+  );
+
   const handle = useMemo<WorldChunkHandle>(
     () => ({
+      meshRef,
       terrainDataRef: terrainData,
       loadedRef,
       getBlockAt,
+      removeBlockAt,
       setBlockTypeAt,
       setBlockInstanceIdAt,
       isBlockVisible,
@@ -332,7 +367,9 @@ const WorldChunk = ({
       generateMesh,
     }),
     [
+      meshRef,
       getBlockAt,
+      removeBlockAt,
       setBlockTypeAt,
       setBlockInstanceIdAt,
       isBlockVisible,
