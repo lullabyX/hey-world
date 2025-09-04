@@ -47,7 +47,7 @@ const useControl = ({
 
   const inputRef = useRef<Vector3>(new Vector3(0, 0, 0));
   const playerVelocityRef = useRef(new Vector3(0, 0, 0));
-  const selectedCoordsRef = useRef<Vector3>(new Vector3(0, 0, 0));
+  const selectedCoordsRef = useRef<Vector3>(null);
   const selectionHelperRef = useRef<Mesh>(null);
 
   const [isLocked, setIsLocked] = useState(false);
@@ -64,7 +64,7 @@ const useControl = ({
     id: 'minecraft-main-canvas',
   });
 
-  const { chunksRef } = useWorldManager();
+  const { chunksRef, removeBlockAt } = useWorldManager();
 
   const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } = usePhysics(
     {
@@ -176,7 +176,7 @@ const useControl = ({
   }, []);
 
   const handlePointerOver = useCallback(() => {
-    if (!isLocked) return;
+    if (!controlsRef.current?.isLocked) return;
     if (!playerRef.current) return;
     if (!chunksRef.current) return;
     if (!selectionHelperRef.current) return;
@@ -191,7 +191,7 @@ const useControl = ({
     raycaster.setFromCamera(new Vector2(0, 0), playerRef.current); // correct world origin+dir
     const intersections = raycaster.intersectObject(chunksRef.current, true);
 
-    const intersection = intersections[0];
+    const intersection = intersections?.[0];
 
     if (
       intersection &&
@@ -209,18 +209,33 @@ const useControl = ({
       selectionHelperRef.current.position.copy(selectedCoordsRef.current);
       selectionHelperRef.current.visible = true;
     } else {
+      selectedCoordsRef.current = null;
       selectionHelperRef.current.visible = false;
     }
-  }, [isLocked, playerRef, chunksRef, selectionHelperRef]);
+  }, [controlsRef, playerRef, chunksRef, selectionHelperRef]);
+
+  const handlePointerDown = useCallback(
+    (ev: MouseEvent) => {
+      if (!controlsRef.current?.isLocked) return;
+      if (!selectedCoordsRef.current) return;
+      if (ev.button !== 0) return;
+
+      const coords = selectedCoordsRef.current;
+      removeBlockAt(coords.x, coords.y, coords.z);
+    },
+    [selectedCoordsRef, controlsRef, removeBlockAt]
+  );
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('mousedown', handlePointerDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
+      document.addEventListener('mousedown', handlePointerDown);
     };
-  }, [handleKeyDown, handleKeyUp, handlePointerOver]);
+  }, [handleKeyDown, handleKeyUp, handlePointerOver, handlePointerDown]);
 
   useFrame((_, delta) => {
     updatePhysics(delta);

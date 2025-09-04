@@ -14,20 +14,31 @@ import {
   Matrix4,
   MeshLambertMaterial,
   Vector2,
+  Vector3,
   WebGLProgramParametersWithUniforms,
 } from 'three';
-import { createAtlasOnBeforeCompile, loadTextureTiles } from '@/lib/texture';
+import {
+  copyTextureTiles,
+  createAtlasOnBeforeCompile,
+  loadTextureTiles,
+} from '@/lib/texture';
 import { useAtlas } from '@/lib/texture';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
 import { Block, BlockType, getResourceEntries } from '@/lib/block';
 import { RandomNumberGenerator } from '@/helpers/random-number-generator';
-import { ChuckType, useWorldChunk } from '../hooks/useWorldChunk';
+import {
+  adjacentPositions,
+  ChuckType,
+  useWorldChunk,
+} from '../hooks/useWorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
 
 export type WorldChunkHandle = {
+  meshRef: React.RefObject<InstancedMesh | null>;
   terrainDataRef: React.RefObject<ChuckType>;
   loadedRef: React.RefObject<boolean>;
   getBlockAt: (x: number, y: number, z: number) => Block | null;
+  removeBlockAt: (x: number, y: number, z: number) => void;
   setBlockTypeAt: (x: number, y: number, z: number, type: BlockType) => void;
   setBlockInstanceIdAt: (x: number, y: number, z: number, id: number) => void;
   isBlockVisible: (x: number, y: number, z: number) => boolean;
@@ -68,6 +79,38 @@ const WorldChunk = ({
   );
 
   const loadedRef = useRef(false);
+
+  const shaderAttrib = useMemo(() => {
+    const uvTopArr = new Float32Array(totalSize * 2);
+    const uvSideArr = new Float32Array(totalSize * 2);
+    const uvBottomArr = new Float32Array(totalSize * 2);
+    const tintTopArr = new Float32Array(totalSize * 3);
+    const tintSideArr = new Float32Array(totalSize * 3);
+    const tintBottomArr = new Float32Array(totalSize * 3);
+
+    const uvTopAttr = new InstancedBufferAttribute(uvTopArr, 2);
+    const uvSideAttr = new InstancedBufferAttribute(uvSideArr, 2);
+    const uvBottomAttr = new InstancedBufferAttribute(uvBottomArr, 2);
+    const tintTopAttr = new InstancedBufferAttribute(tintTopArr, 3);
+    const tintSideAttr = new InstancedBufferAttribute(tintSideArr, 3);
+    const tintBottomAttr = new InstancedBufferAttribute(tintBottomArr, 3);
+
+    return {
+      uvTopArr,
+      uvSideArr,
+      uvBottomArr,
+      tintTopArr,
+      tintSideArr,
+      tintBottomArr,
+
+      uvTopAttr,
+      uvSideAttr,
+      uvBottomAttr,
+      tintTopAttr,
+      tintSideAttr,
+      tintBottomAttr,
+    };
+  }, [totalSize]);
 
   const {
     getBlockAt,
@@ -128,6 +171,47 @@ const WorldChunk = ({
     collapsed: true,
   }) as Record<string, number>;
   const resourceControlsKey = JSON.stringify(resourceControls);
+
+  const setGeometryAttributes = useCallback(() => {
+    if (!meshRef.current) return;
+
+    const geom = meshRef.current.geometry;
+    const {
+      uvTopAttr,
+      uvSideAttr,
+      uvBottomAttr,
+      tintTopAttr,
+      tintSideAttr,
+      tintBottomAttr,
+    } = shaderAttrib;
+
+    geom.setAttribute('uvTop', uvTopAttr);
+    geom.setAttribute('uvSide', uvSideAttr);
+    geom.setAttribute('uvBottom', uvBottomAttr);
+    geom.setAttribute('tintTop', tintTopAttr);
+    geom.setAttribute('tintSide', tintSideAttr);
+    geom.setAttribute('tintBottom', tintBottomAttr);
+  }, [shaderAttrib, meshRef]);
+
+  const setShaderAttributesNeedsUpdate = useCallback(() => {
+    if (!meshRef.current) return;
+
+    const {
+      uvTopAttr,
+      uvSideAttr,
+      uvBottomAttr,
+      tintTopAttr,
+      tintSideAttr,
+      tintBottomAttr,
+    } = shaderAttrib;
+
+    uvTopAttr.needsUpdate = true;
+    uvSideAttr.needsUpdate = true;
+    uvBottomAttr.needsUpdate = true;
+    tintTopAttr.needsUpdate = true;
+    tintSideAttr.needsUpdate = true;
+    tintBottomAttr.needsUpdate = true;
+  }, [shaderAttrib, meshRef]);
 
   const generateTerrain = useCallback(
     ({ rng }: { rng: RandomNumberGenerator }) => {
@@ -230,14 +314,14 @@ const WorldChunk = ({
     meshRef.current.count = 0;
     const matrix = new Matrix4();
 
-    const geom = meshRef.current.geometry;
-    const total = totalSize;
-    const uvTopArr = new Float32Array(total * 2);
-    const uvSideArr = new Float32Array(total * 2);
-    const uvBottomArr = new Float32Array(total * 2);
-    const tintTopArr = new Float32Array(total * 3);
-    const tintSideArr = new Float32Array(total * 3);
-    const tintBottomArr = new Float32Array(total * 3);
+    const {
+      uvTopArr,
+      uvSideArr,
+      uvBottomArr,
+      tintTopArr,
+      tintSideArr,
+      tintBottomArr,
+    } = shaderAttrib;
 
     const atlasScale = new Vector2(1 / atlas.cols, 1 / atlas.rows);
     atlasScaleRef.current.copy(atlasScale);
@@ -276,31 +360,13 @@ const WorldChunk = ({
     }
 
     meshRef.current.position.set(xOffset, 0, zOffset);
-    // meshRef.current.computeBoundingBox();
     meshRef.current.computeBoundingSphere();
 
     meshRef.current.instanceMatrix.needsUpdate = true;
 
-    const uvTopAttr = new InstancedBufferAttribute(uvTopArr, 2);
-    const uvSideAttr = new InstancedBufferAttribute(uvSideArr, 2);
-    const uvBottomAttr = new InstancedBufferAttribute(uvBottomArr, 2);
-    const tintTopAttr = new InstancedBufferAttribute(tintTopArr, 3);
-    const tintSideAttr = new InstancedBufferAttribute(tintSideArr, 3);
-    const tintBottomAttr = new InstancedBufferAttribute(tintBottomArr, 3);
+    setGeometryAttributes();
 
-    geom.setAttribute('uvTop', uvTopAttr);
-    geom.setAttribute('uvSide', uvSideAttr);
-    geom.setAttribute('uvBottom', uvBottomAttr);
-    geom.setAttribute('tintTop', tintTopAttr);
-    geom.setAttribute('tintSide', tintSideAttr);
-    geom.setAttribute('tintBottom', tintBottomAttr);
-
-    uvTopAttr.needsUpdate = true;
-    uvSideAttr.needsUpdate = true;
-    uvBottomAttr.needsUpdate = true;
-    tintTopAttr.needsUpdate = true;
-    tintSideAttr.needsUpdate = true;
-    tintBottomAttr.needsUpdate = true;
+    setShaderAttributesNeedsUpdate();
 
     const shader = materialRef.current?.userData?.shader;
     if (shader?.uniforms?.atlasScale) {
@@ -309,22 +375,132 @@ const WorldChunk = ({
   }, [
     width,
     height,
-    getBlockAt,
-    setBlockInstanceIdAt,
-    isBlockVisible,
-    totalSize,
     atlas,
     atlasScaleRef,
     materialRef,
     xOffset,
     zOffset,
+    shaderAttrib,
+    getBlockAt,
+    setBlockInstanceIdAt,
+    isBlockVisible,
+    setGeometryAttributes,
+    setShaderAttributesNeedsUpdate,
   ]);
+
+  const revealBlockAt = useCallback(
+    (x: number, y: number, z: number) => {
+      if (!meshRef.current) return;
+      if (!atlas) return;
+
+      const block = getBlockAt(x, y, z);
+      if (!block || block?.type === 'empty' || block?.instanceId) return;
+
+      const mesh = meshRef.current;
+      const instanceId = mesh.count++;
+
+      const {
+        uvTopArr,
+        uvSideArr,
+        uvBottomArr,
+        tintTopArr,
+        tintSideArr,
+        tintBottomArr,
+      } = shaderAttrib;
+
+      const matrix = new Matrix4();
+      setBlockInstanceIdAt(x, y, z, instanceId);
+      matrix.setPosition(x, y, z);
+      mesh.setMatrixAt(instanceId, matrix);
+
+      (block as Block).instanceId = instanceId;
+      loadTextureTiles({
+        block,
+        uvTopArr,
+        uvSideArr,
+        uvBottomArr,
+        tintTopArr,
+        tintSideArr,
+        tintBottomArr,
+        atlas,
+      });
+    },
+    [meshRef, atlas, shaderAttrib, getBlockAt, setBlockInstanceIdAt]
+  );
+
+  const removeBlockAt = useCallback(
+    (x: number, y: number, z: number) => {
+      const mesh = meshRef.current;
+      if (!mesh) return;
+
+      const block = getBlockAt(x, y, z);
+
+      if (block?.type === 'empty') return;
+      if (!block?.instanceId) return;
+
+      const fromInstanceId = mesh.count - 1;
+      const toInstanceId = block.instanceId;
+
+      setBlockTypeAt(x, y, z, 'empty');
+
+      const lastMatrix = new Matrix4();
+      mesh.getMatrixAt(fromInstanceId, lastMatrix);
+
+      const v = new Vector3();
+      v.applyMatrix4(lastMatrix);
+      setBlockInstanceIdAt(v.x, v.y, v.z, toInstanceId);
+
+      mesh.setMatrixAt(toInstanceId, lastMatrix);
+
+      const {
+        uvTopArr,
+        uvSideArr,
+        uvBottomArr,
+        tintTopArr,
+        tintSideArr,
+        tintBottomArr,
+      } = shaderAttrib;
+
+      copyTextureTiles({
+        uvTopArr,
+        uvSideArr,
+        uvBottomArr,
+        tintTopArr,
+        tintSideArr,
+        tintBottomArr,
+        fromInstanceId,
+        toInstanceId,
+      });
+
+      mesh.count--;
+
+      for (const { dx, dy, dz } of adjacentPositions) {
+        revealBlockAt(x + dx, y + dy, z + dz);
+      }
+
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.computeBoundingSphere();
+
+      setShaderAttributesNeedsUpdate();
+    },
+    [
+      meshRef,
+      shaderAttrib,
+      getBlockAt,
+      setBlockTypeAt,
+      setBlockInstanceIdAt,
+      revealBlockAt,
+      setShaderAttributesNeedsUpdate,
+    ]
+  );
 
   const handle = useMemo<WorldChunkHandle>(
     () => ({
+      meshRef,
       terrainDataRef: terrainData,
       loadedRef,
       getBlockAt,
+      removeBlockAt,
       setBlockTypeAt,
       setBlockInstanceIdAt,
       isBlockVisible,
@@ -332,7 +508,9 @@ const WorldChunk = ({
       generateMesh,
     }),
     [
+      meshRef,
       getBlockAt,
+      removeBlockAt,
       setBlockTypeAt,
       setBlockInstanceIdAt,
       isBlockVisible,

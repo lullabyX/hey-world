@@ -65,7 +65,7 @@ export const loadTextureTiles = ({
   const [uB, vB] = tileIndexToOffset(bottomIdx, atlas);
 
   const instanceId = block.instanceId;
-  if (instanceId == null) {
+  if (instanceId === null) {
     return;
   }
 
@@ -98,4 +98,47 @@ export const loadTextureTiles = ({
   uvSideArr[instanceId * 2 + 1] = vS;
   uvBottomArr[instanceId * 2 + 0] = uB;
   uvBottomArr[instanceId * 2 + 1] = vB;
+};
+
+const copy2 = (arr: Float32Array, from: number, to: number) => {
+  const fi = from * 2,
+    ti = to * 2;
+  arr[ti] = arr[fi] ?? 0;
+  arr[ti + 1] = arr[fi + 1] ?? 0;
+};
+const copy3 = (arr: Float32Array, from: number, to: number) => {
+  const fi = from * 3,
+    ti = to * 3;
+  arr[ti] = arr[fi] ?? 0;
+  arr[ti + 1] = arr[fi + 1] ?? 0;
+  arr[ti + 2] = arr[fi + 2] ?? 0;
+};
+
+export const copyTextureTiles = ({
+  uvTopArr,
+  uvSideArr,
+  uvBottomArr,
+  tintTopArr,
+  tintSideArr,
+  tintBottomArr,
+  fromInstanceId,
+  toInstanceId,
+}: {
+  uvTopArr: Float32Array;
+  uvSideArr: Float32Array;
+  uvBottomArr: Float32Array;
+  tintTopArr: Float32Array;
+  tintSideArr: Float32Array;
+  tintBottomArr: Float32Array;
+  fromInstanceId: number;
+  toInstanceId: number;
+}) => {
+  if (fromInstanceId !== toInstanceId) {
+    copy2(uvTopArr, fromInstanceId, toInstanceId);
+    copy2(uvSideArr, fromInstanceId, toInstanceId);
+    copy2(uvBottomArr, fromInstanceId, toInstanceId);
+    copy3(tintTopArr, fromInstanceId, toInstanceId);
+    copy3(tintSideArr, fromInstanceId, toInstanceId);
+    copy3(tintBottomArr, fromInstanceId, toInstanceId);
+  }
 };
