@@ -3,6 +3,15 @@ import { Block, BlockType, createBlock } from '@/lib/block';
 
 export type ChuckType = Block[][][];
 
+export const adjacentPositions = [
+  { dx: 0, dy: 1, dz: 0 },
+  { dx: 0, dy: -1, dz: 0 },
+  { dx: 1, dy: 0, dz: 0 },
+  { dx: -1, dy: 0, dz: 0 },
+  { dx: 0, dy: 0, dz: 1 },
+  { dx: 0, dy: 0, dz: -1 },
+];
+
 export const useWorldChunk = (
   width: number,
   height: number,
@@ -61,15 +70,6 @@ export const useWorldChunk = (
 
   const isBlockVisible = useCallback(
     (x: number, y: number, z: number) => {
-      const adjacentPositions = [
-        { dx: 0, dy: 1, dz: 0 },
-        { dx: 0, dy: -1, dz: 0 },
-        { dx: 1, dy: 0, dz: 0 },
-        { dx: -1, dy: 0, dz: 0 },
-        { dx: 0, dy: 0, dz: 1 },
-        { dx: 0, dy: 0, dz: -1 },
-      ];
-
       for (const { dx, dy, dz } of adjacentPositions) {
         const adjacentX = x + dx;
         const adjacentY = y + dy;
