@@ -394,9 +394,8 @@ const WorldChunk = ({
       if (!atlas) return;
 
       const block = getBlockAt(x, y, z);
-      if (!block || block?.type === 'empty' || block?.instanceId) {
-        return;
-      }
+      if (!block || block?.type === 'empty' || block?.instanceId) return;
+
       const mesh = meshRef.current;
       const instanceId = mesh.count++;
 
@@ -433,7 +432,6 @@ const WorldChunk = ({
     (x: number, y: number, z: number) => {
       const mesh = meshRef.current;
       if (!mesh) return;
-      if (!atlas) return;
 
       const block = getBlockAt(x, y, z);
 
@@ -487,7 +485,6 @@ const WorldChunk = ({
     },
     [
       meshRef,
-      atlas,
       shaderAttrib,
       getBlockAt,
       setBlockTypeAt,
