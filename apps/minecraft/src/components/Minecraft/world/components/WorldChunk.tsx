@@ -24,7 +24,12 @@ import {
 } from '@/lib/texture';
 import { useAtlas } from '@/lib/texture';
 import { SimplexNoise } from 'three/examples/jsm/Addons.js';
-import { Block, BlockType, getResourceEntries } from '@/lib/block';
+import {
+  Block,
+  BlockType,
+  getResourceEntries,
+  hasInstanceId,
+} from '@/lib/block';
 import { RandomNumberGenerator } from '@/helpers/random-number-generator';
 import {
   adjacentPositions,
@@ -436,7 +441,7 @@ const WorldChunk = ({
       const block = getBlockAt(x, y, z);
 
       if (block?.type === 'empty') return;
-      if (!block?.instanceId) return;
+      if (!hasInstanceId(block)) return;
 
       const fromInstanceId = mesh.count - 1;
       const toInstanceId = block.instanceId;

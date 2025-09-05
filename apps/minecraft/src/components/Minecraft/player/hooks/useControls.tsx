@@ -20,6 +20,7 @@ import PointDebug from '@/components/helpers/PointDebug';
 import { useFullscreen } from '@base/components/src';
 import usePhysics from './usePhysics';
 import { useWorldManager } from '../../world';
+import { isValidInstanceId } from '@/lib/block';
 
 const useControl = ({
   playerRef,
@@ -195,7 +196,7 @@ const useControl = ({
 
     if (
       intersection &&
-      intersection.instanceId &&
+      isValidInstanceId(intersection.instanceId) &&
       intersection.object instanceof InstancedMesh
     ) {
       const chunkPosition = intersection.object.position;
