@@ -262,7 +262,6 @@ const useControl = ({
         removeBlockAt(coords.x, coords.y, coords.z);
       } else {
         const normalizedCoords = coords.clone().add(selectedNormalRef.current);
-        console.log(normalizedCoords);
         addBlockAt(
           normalizedCoords.x,
           normalizedCoords.y,
