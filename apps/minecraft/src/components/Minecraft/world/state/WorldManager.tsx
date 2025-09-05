@@ -5,7 +5,7 @@ import { useAtom } from 'jotai';
 import { createContext, RefObject, useCallback, useMemo, useRef } from 'react';
 import { Group, Vector3 } from 'three';
 import { WorldChunkHandle } from '../components/WorldChunk';
-import { Block } from '@/lib/block';
+import { Block, BlockType } from '@/lib/block';
 
 type WorldManager = {
   chunksRef: RefObject<Group | null>;
@@ -20,6 +20,7 @@ type WorldManager = {
   getChunkCoords: (x: number, z: number) => { cx: number; cz: number };
   chunkKeyFor: (cx: number, cz: number) => string;
   removeBlockAt: (x: number, y: number, z: number) => void;
+  addBlockAt: (x: number, y: number, z: number, type: BlockType) => void;
 };
 
 export const WorldContext = createContext<WorldManager | null>(null);
@@ -98,6 +99,20 @@ export const WorldManagerProvider = ({
     [getChunkAt, getBlockLocalCoords]
   );
 
+  const addBlockAt = useCallback(
+    (x: number, y: number, z: number, type: BlockType) => {
+      const chunk = getChunkAt(x, z);
+
+      if (!chunk) return;
+      if (!chunk.loadedRef.current) return;
+
+      const { localX, localY, localZ } = getBlockLocalCoords(x, y, z);
+
+      chunk.addBlockAt(localX, localY, localZ, type);
+    },
+    [getBlockLocalCoords, getChunkAt]
+  );
+
   const removeBlockAt = useCallback(
     (x: number, y: number, z: number) => {
       const chunk = getChunkAt(x, z);
@@ -132,6 +147,7 @@ export const WorldManagerProvider = ({
       getChunkCoords,
       chunkKeyFor,
       removeBlockAt,
+      addBlockAt,
     }),
     [
       chunksRef,
@@ -142,6 +158,7 @@ export const WorldManagerProvider = ({
       getChunkKey,
       getChunkCoords,
       removeBlockAt,
+      addBlockAt,
     ]
   );
 
