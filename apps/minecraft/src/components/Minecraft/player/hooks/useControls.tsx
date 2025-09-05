@@ -20,7 +20,7 @@ import PointDebug from '@/components/helpers/PointDebug';
 import { useFullscreen } from '@base/components/src';
 import usePhysics from './usePhysics';
 import { useWorldManager } from '../../world';
-import { isValidInstanceId } from '@/lib/block';
+import { BlockType, isValidInstanceId } from '@/lib/block';
 
 const useControl = ({
   playerRef,
@@ -39,6 +39,7 @@ const useControl = ({
   });
 
   const jumpSpeed = 10;
+
   const onGroundRef = useRef(false);
 
   const controlsRef = useRef<PointerLockControlsImpl>(null);
@@ -50,6 +51,8 @@ const useControl = ({
   const playerVelocityRef = useRef(new Vector3(0, 0, 0));
   const selectedCoordsRef = useRef<Vector3>(null);
   const selectionHelperRef = useRef<Mesh>(null);
+  const selectedBlockTypeRef = useRef<BlockType>('empty');
+  const selectedNormalRef = useRef<Vector3>(new Vector3(0, 0, 0));
 
   const [isLocked, setIsLocked] = useState(false);
 
@@ -65,7 +68,7 @@ const useControl = ({
     id: 'minecraft-main-canvas',
   });
 
-  const { chunksRef, removeBlockAt } = useWorldManager();
+  const { chunksRef, removeBlockAt, addBlockAt } = useWorldManager();
 
   const { narrowPhaseCollisionsRef, collisionsRef, updatePhysics } = usePhysics(
     {
@@ -122,6 +125,36 @@ const useControl = ({
       }
 
       switch (e.key) {
+        case '1':
+          selectedBlockTypeRef.current = 'grass';
+          break;
+        case '2':
+          selectedBlockTypeRef.current = 'dirt';
+          break;
+        case '3':
+          selectedBlockTypeRef.current = 'stone';
+          break;
+        case '4':
+          selectedBlockTypeRef.current = 'wood';
+          break;
+        case '5':
+          selectedBlockTypeRef.current = 'coal_ore';
+          break;
+        case '6':
+          selectedBlockTypeRef.current = 'iron_ore';
+          break;
+        case '7':
+          selectedBlockTypeRef.current = 'gold_ore';
+          break;
+        case '8':
+          selectedBlockTypeRef.current = 'diamond_ore';
+          break;
+        case '9':
+          selectedBlockTypeRef.current = 'sand';
+          break;
+        case '0':
+          selectedBlockTypeRef.current = 'empty';
+          break;
         case 'w':
         case 'ArrowUp':
           inputRef.current.z = speed;
@@ -206,6 +239,9 @@ const useControl = ({
 
       selectedCoordsRef.current = chunkPosition.clone();
       selectedCoordsRef.current.applyMatrix4(blockMatrix);
+      selectedNormalRef.current.copy(
+        intersection.normal ?? new Vector3(0, 0, 0)
+      );
 
       selectionHelperRef.current.position.copy(selectedCoordsRef.current);
       selectionHelperRef.current.visible = true;
@@ -222,9 +258,20 @@ const useControl = ({
       if (ev.button !== 0) return;
 
       const coords = selectedCoordsRef.current;
-      removeBlockAt(coords.x, coords.y, coords.z);
+      if (selectedBlockTypeRef.current === 'empty') {
+        removeBlockAt(coords.x, coords.y, coords.z);
+      } else {
+        const normalizedCoords = coords.clone().add(selectedNormalRef.current);
+        console.log(normalizedCoords);
+        addBlockAt(
+          normalizedCoords.x,
+          normalizedCoords.y,
+          normalizedCoords.z,
+          selectedBlockTypeRef.current
+        );
+      }
     },
-    [selectedCoordsRef, controlsRef, removeBlockAt]
+    [selectedCoordsRef, controlsRef, removeBlockAt, addBlockAt]
   );
 
   useEffect(() => {

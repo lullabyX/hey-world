@@ -43,6 +43,7 @@ export type WorldChunkHandle = {
   terrainDataRef: React.RefObject<ChuckType>;
   loadedRef: React.RefObject<boolean>;
   getBlockAt: (x: number, y: number, z: number) => Block | null;
+  addBlockAt: (x: number, y: number, z: number, type: BlockType) => void;
   removeBlockAt: (x: number, y: number, z: number) => void;
   setBlockTypeAt: (x: number, y: number, z: number, type: BlockType) => void;
   setBlockInstanceIdAt: (x: number, y: number, z: number, id: number) => void;
@@ -399,8 +400,7 @@ const WorldChunk = ({
       if (!atlas) return;
 
       const block = getBlockAt(x, y, z);
-      if (!block || block?.type === 'empty' || block?.instanceId) return;
-
+      if (!block || block.type === 'empty' || hasInstanceId(block)) return;
       const mesh = meshRef.current;
       const instanceId = mesh.count++;
 
@@ -433,20 +433,17 @@ const WorldChunk = ({
     [meshRef, atlas, shaderAttrib, getBlockAt, setBlockInstanceIdAt]
   );
 
-  const removeBlockAt = useCallback(
+  const hideBlockAt = useCallback(
     (x: number, y: number, z: number) => {
       const mesh = meshRef.current;
       if (!mesh) return;
 
       const block = getBlockAt(x, y, z);
 
-      if (block?.type === 'empty') return;
       if (!hasInstanceId(block)) return;
 
       const fromInstanceId = mesh.count - 1;
       const toInstanceId = block.instanceId;
-
-      setBlockTypeAt(x, y, z, 'empty');
 
       const lastMatrix = new Matrix4();
       mesh.getMatrixAt(fromInstanceId, lastMatrix);
@@ -456,6 +453,8 @@ const WorldChunk = ({
       setBlockInstanceIdAt(v.x, v.y, v.z, toInstanceId);
 
       mesh.setMatrixAt(toInstanceId, lastMatrix);
+
+      setBlockInstanceIdAt(x, y, z, null);
 
       const {
         uvTopArr,
@@ -478,6 +477,62 @@ const WorldChunk = ({
       });
 
       mesh.count--;
+    },
+    [meshRef, shaderAttrib, getBlockAt, setBlockInstanceIdAt]
+  );
+
+  const addBlockAt = useCallback(
+    (x: number, y: number, z: number, type: BlockType) => {
+      const mesh = meshRef.current;
+      if (!mesh) return;
+
+      const block = getBlockAt(x, y, z);
+
+      if (block?.type !== 'empty') return;
+      if (hasInstanceId(block)) return;
+
+      setBlockTypeAt(x, y, z, type);
+
+      revealBlockAt(x, y, z);
+
+      for (const { dx, dy, dz } of adjacentPositions) {
+        const adjX = x + dx;
+        const adjY = y + dy;
+        const adjZ = z + dz;
+        const isVisible = isBlockVisible(adjX, adjY, adjZ);
+        if (!isVisible) {
+          hideBlockAt(adjX, adjY, adjZ);
+        }
+      }
+
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.computeBoundingSphere();
+
+      setShaderAttributesNeedsUpdate();
+    },
+    [
+      meshRef,
+      isBlockVisible,
+      getBlockAt,
+      setBlockTypeAt,
+      hideBlockAt,
+      revealBlockAt,
+      setShaderAttributesNeedsUpdate,
+    ]
+  );
+
+  const removeBlockAt = useCallback(
+    (x: number, y: number, z: number) => {
+      const mesh = meshRef.current;
+      if (!mesh) return;
+
+      const block = getBlockAt(x, y, z);
+
+      if (block?.type === 'empty') return;
+      if (!hasInstanceId(block)) return;
+
+      hideBlockAt(x, y, z);
+      setBlockTypeAt(x, y, z, 'empty');
 
       for (const { dx, dy, dz } of adjacentPositions) {
         revealBlockAt(x + dx, y + dy, z + dz);
@@ -490,10 +545,9 @@ const WorldChunk = ({
     },
     [
       meshRef,
-      shaderAttrib,
       getBlockAt,
       setBlockTypeAt,
-      setBlockInstanceIdAt,
+      hideBlockAt,
       revealBlockAt,
       setShaderAttributesNeedsUpdate,
     ]
@@ -505,6 +559,7 @@ const WorldChunk = ({
       terrainDataRef: terrainData,
       loadedRef,
       getBlockAt,
+      addBlockAt,
       removeBlockAt,
       setBlockTypeAt,
       setBlockInstanceIdAt,
@@ -515,6 +570,7 @@ const WorldChunk = ({
     [
       meshRef,
       getBlockAt,
+      addBlockAt,
       removeBlockAt,
       setBlockTypeAt,
       setBlockInstanceIdAt,

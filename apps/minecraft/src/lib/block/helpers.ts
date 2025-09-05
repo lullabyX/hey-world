@@ -16,7 +16,7 @@ export const createBlock = (
 export const hasInstanceId = <T extends { instanceId: number | null }>(
   block: T | null | undefined
 ): block is T & { instanceId: number } =>
-  block?.instanceId !== null || block?.instanceId !== undefined;
+  block?.instanceId !== null && block?.instanceId !== undefined;
 
 export const isValidInstanceId = (
   id: number | null | undefined

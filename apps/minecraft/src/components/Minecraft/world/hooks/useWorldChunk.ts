@@ -59,7 +59,7 @@ export const useWorldChunk = (
   );
 
   const setBlockInstanceIdAt = useCallback(
-    (x: number, y: number, z: number, instanceId: number) => {
+    (x: number, y: number, z: number, instanceId: number | null) => {
       if (!isBound(x, y, z)) {
         return;
       }
