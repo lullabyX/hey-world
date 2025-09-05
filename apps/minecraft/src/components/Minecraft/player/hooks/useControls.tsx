@@ -132,10 +132,10 @@ const useControl = ({
           selectedBlockTypeRef.current = 'dirt';
           break;
         case '3':
-          selectedBlockTypeRef.current = 'stone';
+          selectedBlockTypeRef.current = 'wood';
           break;
         case '4':
-          selectedBlockTypeRef.current = 'wood';
+          selectedBlockTypeRef.current = 'stone';
           break;
         case '5':
           selectedBlockTypeRef.current = 'coal_ore';
