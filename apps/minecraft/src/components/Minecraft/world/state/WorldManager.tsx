@@ -111,7 +111,7 @@ export const WorldManagerProvider = ({
       const cz = chunk.meshRef.current.position.z;
 
       const { localX, localY, localZ } = getBlockLocalCoords(x, y, z);
-      console.log(cx, cz, localX, localY, localZ);
+
       chunk.addBlockAt(localX, localY, localZ, type);
       worldEdits.set(cx, cz, localX, localY, localZ, type);
     },

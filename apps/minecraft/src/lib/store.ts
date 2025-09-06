@@ -1,5 +1,5 @@
 import { atom } from 'jotai';
-import { Block, BlockType } from './block';
+import { BlockType } from './block';
 
 export const dimensionsAtom = atom({
   width: 32,
