@@ -322,7 +322,7 @@ const WorldChunk = ({
         setBlockTypeAt(x, y, z, modifiedBlockType);
       }
     },
-    [terrainData, xOffset, zOffset]
+    [terrainData, xOffset, zOffset, setBlockTypeAt]
   );
 
   const generateMesh = useCallback(() => {
@@ -403,6 +403,7 @@ const WorldChunk = ({
     xOffset,
     zOffset,
     shaderAttrib,
+    loadSave,
     getBlockAt,
     setBlockInstanceIdAt,
     isBlockVisible,
