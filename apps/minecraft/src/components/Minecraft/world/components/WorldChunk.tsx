@@ -37,6 +37,7 @@ import {
   useWorldChunk,
 } from '../hooks/useWorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
+import { worldEdits } from '@/lib/store';
 
 export type WorldChunkHandle = {
   meshRef: React.RefObject<InstancedMesh | null>;
@@ -312,10 +313,24 @@ const WorldChunk = ({
     ]
   );
 
+  const loadSave = useCallback(
+    (x: number, y: number, z: number) => {
+      if (terrainData.current) return;
+
+      const modifiedBlockType = worldEdits.get(xOffset, zOffset, x, y, z);
+      if (modifiedBlockType) {
+        setBlockTypeAt(x, y, z, modifiedBlockType);
+      }
+    },
+    [terrainData, xOffset, zOffset]
+  );
+
   const generateMesh = useCallback(() => {
     if (!meshRef.current || !atlas || !materialRef.current) {
       return;
     }
+
+    meshRef.current.position.set(xOffset, 0, zOffset);
 
     meshRef.current.count = 0;
     const matrix = new Matrix4();
@@ -335,6 +350,8 @@ const WorldChunk = ({
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         for (let z = 0; z < width; z++) {
+          loadSave(x, y, z);
+
           const block = getBlockAt(x, y, z);
           const notEmptyBlock = block && block.type !== 'empty';
           const _isBlockVisible = isBlockVisible(x, y, z);
@@ -365,7 +382,6 @@ const WorldChunk = ({
       }
     }
 
-    meshRef.current.position.set(xOffset, 0, zOffset);
     meshRef.current.computeBoundingSphere();
 
     meshRef.current.instanceMatrix.needsUpdate = true;
