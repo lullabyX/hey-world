@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useState } from 'react';
-import { useControls } from 'leva';
-import { dimensionsAtom } from '@/lib/store';
+import { button, useControls } from 'leva';
+import { dimensionsAtom, worldEdits } from '@/lib/store';
 import { useAtom } from 'jotai';
 import WorldChunk from './WorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
@@ -53,6 +53,9 @@ const World = () => {
         max: 1000000000,
         step: 1,
       },
+      'Reset World': button(() => {
+        worldEdits.reset();
+      }),
     },
     { collapsed: true }
   );
