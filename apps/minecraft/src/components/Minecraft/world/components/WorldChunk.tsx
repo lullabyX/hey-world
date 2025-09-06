@@ -315,7 +315,7 @@ const WorldChunk = ({
 
   const loadSave = useCallback(
     (x: number, y: number, z: number) => {
-      if (terrainData.current) return;
+      if (!terrainData.current) return;
 
       const modifiedBlockType = worldEdits.get(xOffset, zOffset, x, y, z);
       if (modifiedBlockType) {

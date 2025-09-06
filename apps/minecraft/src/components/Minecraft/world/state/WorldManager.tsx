@@ -1,6 +1,6 @@
 'use client';
 
-import { dimensionsAtom } from '@/lib/store';
+import { dimensionsAtom, worldEdits } from '@/lib/store';
 import { useAtom } from 'jotai';
 import { createContext, RefObject, useCallback, useMemo, useRef } from 'react';
 import { Group, Vector3 } from 'three';
@@ -105,10 +105,15 @@ export const WorldManagerProvider = ({
 
       if (!chunk) return;
       if (!chunk.loadedRef.current) return;
+      if (!chunk.meshRef.current) return;
+
+      const cx = chunk.meshRef.current.position.x;
+      const cz = chunk.meshRef.current.position.z;
 
       const { localX, localY, localZ } = getBlockLocalCoords(x, y, z);
-
+      console.log(cx, cz, localX, localY, localZ);
       chunk.addBlockAt(localX, localY, localZ, type);
+      worldEdits.set(cx, cz, localX, localY, localZ, type);
     },
     [getBlockLocalCoords, getChunkAt]
   );
@@ -119,10 +124,15 @@ export const WorldManagerProvider = ({
 
       if (!chunk) return;
       if (!chunk.loadedRef.current) return;
+      if (!chunk.meshRef.current) return;
+
+      const cx = chunk.meshRef.current.position.x;
+      const cz = chunk.meshRef.current.position.z;
 
       const { localX, localY, localZ } = getBlockLocalCoords(x, y, z);
 
       chunk.removeBlockAt(localX, localY, localZ);
+      worldEdits.set(cx, cz, localX, localY, localZ, 'empty');
     },
     [getBlockLocalCoords, getChunkAt]
   );

@@ -78,6 +78,14 @@ class WorldEditsStore {
     this.ensureLoaded();
     return this.store.get(this.key(cx, cz, x, y, z));
   }
+
+  reset() {
+    if (typeof window === 'undefined') return;
+    this.ensureLoaded();
+    this.store.clear();
+    window.localStorage.removeItem(STORAGE_KEY);
+    this.scheduleSave();
+  }
 }
 
 export const worldEdits = new WorldEditsStore();
