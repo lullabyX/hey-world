@@ -220,6 +220,15 @@ const WorldChunk = ({
     tintBottomAttr.needsUpdate = true;
   }, [shaderAttrib, meshRef]);
 
+  const generateTree = useCallback(
+    (x: number, y: number, z: number, noise: number) => {
+      if (noise < 0.4) {
+        setBlockTypeAt(x, y, z, 'wood');
+      }
+    },
+    [setBlockTypeAt]
+  );
+
   const generateTerrain = useCallback(
     ({ rng }: { rng: RandomNumberGenerator }) => {
       const simplexNoise = new SimplexNoise(rng);
@@ -235,10 +244,14 @@ const WorldChunk = ({
 
           _height = Math.max(0, Math.min(height - 1, _height));
 
+          const treeNoiseValue = simplexNoise.noise(x, z);
+
+          const treeScaledNoiseValue = (treeNoiseValue * 0.45 + 0 + 1) / 2;
           for (let y = 0; y < height; y++) {
             const isResource = getBlockAt(x, y, z)?.isResource;
             if (y === _height) {
               setBlockTypeAt(x, y, z, 'grass');
+              generateTree(x, y, z, treeScaledNoiseValue);
             } else if (y < _height && !isResource) {
               setBlockTypeAt(x, y, z, 'dirt');
             } else if (y > _height) {
@@ -251,13 +264,14 @@ const WorldChunk = ({
     [
       width,
       height,
-      getBlockAt,
-      setBlockTypeAt,
       scale,
       magnitude,
       offset,
       xOffset,
       zOffset,
+      getBlockAt,
+      setBlockTypeAt,
+      generateTree,
     ]
   );
 
