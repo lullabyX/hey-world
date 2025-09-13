@@ -38,6 +38,8 @@ import {
 } from '../hooks/useWorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
 import { worldEdits } from '@/lib/store';
+import { jungleTreeNoise } from '@/lib/constants';
+import { clampNoise } from '@/helpers/noise-clamp';
 
 export type WorldChunkHandle = {
   meshRef: React.RefObject<InstancedMesh | null>;
@@ -220,13 +222,75 @@ const WorldChunk = ({
     tintBottomAttr.needsUpdate = true;
   }, [shaderAttrib, meshRef]);
 
-  const generateTree = useCallback(
-    (x: number, y: number, z: number, noise: number) => {
-      if (noise < 0.4) {
-        setBlockTypeAt(x, y, z, 'wood');
+  const generateTreeCanopee = useCallback(
+    (
+      x: number,
+      baseY: number,
+      z: number,
+      trunkHeight: number,
+      noise: number
+    ) => {
+      // Compute canopy radius from noise within configured bounds
+      const minRadius = jungleTreeNoise.radiusMin;
+      const maxRadius = jungleTreeNoise.radiusMax;
+      const radius = Math.max(
+        1,
+        Math.min(
+          maxRadius,
+          Math.floor(minRadius + noise * (maxRadius - minRadius))
+        )
+      );
+
+      // Center canopy just above the trunk top
+      const centerY = baseY + trunkHeight;
+
+      // Build a hemisphere of leaves (only dy >= 0) to avoid replacing trunk
+      const radiusSquared = radius * radius;
+      for (let dx = -radius; dx <= radius; dx++) {
+        for (let dy = 0; dy <= radius; dy++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const distSquared = dx * dx + dy * dy + dz * dz;
+            if (distSquared > radiusSquared) continue;
+
+            const px = x + dx;
+            const py = centerY + dy;
+            const pz = z + dz;
+
+            // Bounds check within this chunk
+            if (px < 0 || px >= width) continue;
+            if (py < 0 || py >= height) continue;
+            if (pz < 0 || pz >= width) continue;
+
+            // Do not overwrite the trunk top block directly
+            if (dx === 0 && dy === 0 && dz === 0) continue;
+
+            setBlockTypeAt(px, py, pz, 'leaves');
+          }
+        }
       }
     },
-    [setBlockTypeAt]
+    [width, height, setBlockTypeAt]
+  );
+
+  const generateTree = useCallback(
+    (x: number, y: number, z: number, noise: number) => {
+      if (
+        noise > jungleTreeNoise.thresholdMin &&
+        noise < jungleTreeNoise.thresholdMax
+      ) {
+        const minH = jungleTreeNoise.heightMin;
+        const maxH = jungleTreeNoise.heightMax;
+        const desiredHeight = Math.floor(minH + noise * (maxH - minH));
+        const trunkHeight = Math.max(1, Math.min(maxH, desiredHeight));
+
+        for (let i = 0; i < trunkHeight && y + i < height; i++) {
+          setBlockTypeAt(x, y + i, z, 'wood');
+        }
+
+        generateTreeCanopee(x, y, z, trunkHeight, noise);
+      }
+    },
+    [setBlockTypeAt, generateTreeCanopee]
   );
 
   const generateTerrain = useCallback(
@@ -234,27 +298,33 @@ const WorldChunk = ({
       const simplexNoise = new SimplexNoise(rng);
       for (let x = 0; x < width; x++) {
         for (let z = 0; z < width; z++) {
-          const value = simplexNoise.noise(
-            (x + xOffset) / scale,
-            (z + zOffset) / scale
-          );
+          const globalX = x + xOffset;
+          const globalZ = z + zOffset;
+          const value = simplexNoise.noise(globalX / scale, globalZ / scale);
           const scaledValue = value * magnitude + offset;
 
           let _height = Math.floor(height * scaledValue);
 
           _height = Math.max(0, Math.min(height - 1, _height));
 
-          const treeNoiseValue = simplexNoise.noise(x, z);
+          const treeNoiseValue = simplexNoise.noise(
+            globalX / jungleTreeNoise.scale,
+            globalZ / jungleTreeNoise.scale
+          );
 
-          const treeScaledNoiseValue = (treeNoiseValue * 0.45 + 0 + 1) / 2;
+          const treeScaledNoiseValue = clampNoise(
+            treeNoiseValue * jungleTreeNoise.magnitude + jungleTreeNoise.offset
+          );
           for (let y = 0; y < height; y++) {
-            const isResource = getBlockAt(x, y, z)?.isResource;
+            const block = getBlockAt(x, y, z);
+            const isResource = block?.isResource;
+            const isWood = block?.type === 'wood';
             if (y === _height) {
               setBlockTypeAt(x, y, z, 'grass');
               generateTree(x, y, z, treeScaledNoiseValue);
             } else if (y < _height && !isResource) {
               setBlockTypeAt(x, y, z, 'dirt');
-            } else if (y > _height) {
+            } else if (y > _height && !isWood) {
               setBlockTypeAt(x, y, z, 'empty');
             }
           }
