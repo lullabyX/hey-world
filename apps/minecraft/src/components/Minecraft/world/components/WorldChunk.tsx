@@ -133,7 +133,12 @@ const WorldChunk = ({
     initializeTerrain,
   } = useWorldChunk(width, height, terrainData);
 
-  const { registerChunk, unregisterChunk } = useWorldManager();
+  const {
+    registerChunk,
+    unregisterChunk,
+    getBlockOutsideChunkAt,
+    setBlockOutsideChunkAt,
+  } = useWorldManager();
 
   const resources = useMemo(() => getResourceEntries(), []);
   const resourceControlsSchema = useMemo(
@@ -250,7 +255,7 @@ const WorldChunk = ({
       );
 
       // Center canopy just above the trunk top
-      const centerY = baseY + trunkHeight;
+      const centerY = baseY - 1 + trunkHeight;
 
       // Build a hemisphere of leaves (only dy >= 0) to avoid replacing trunk
       const radiusSquared = radius * radius;
@@ -265,9 +270,17 @@ const WorldChunk = ({
             const pz = z + dz;
 
             // Bounds check within this chunk
-            if (px < 0 || px >= width) continue;
-            if (py < 0 || py >= height) continue;
-            if (pz < 0 || pz >= width) continue;
+            if (px < 0 || px >= width) {
+              saveOutsideChunk(px, py, pz, 'leaves');
+              continue;
+            }
+            if (py < 0 || py >= height) {
+              continue;
+            }
+            if (pz < 0 || pz >= width) {
+              saveOutsideChunk(px, py, pz, 'leaves');
+              continue;
+            }
 
             // Do not overwrite the trunk top block directly
             if (dx === 0 && dy === 0 && dz === 0) continue;
@@ -417,6 +430,27 @@ const WorldChunk = ({
     [terrainData, xOffset, zOffset, setBlockTypeAt]
   );
 
+  const loadSaveOutsideChunk = useCallback(
+    (x: number, y: number, z: number) => {
+      const modifiedBlockType = getBlockOutsideChunkAt(
+        x + xOffset, // global x
+        y,
+        z + zOffset // global z
+      );
+      if (modifiedBlockType) {
+        setBlockTypeAt(x, y, z, modifiedBlockType);
+      }
+    },
+    [xOffset, zOffset, setBlockTypeAt, getBlockOutsideChunkAt]
+  );
+
+  const saveOutsideChunk = useCallback(
+    (x: number, y: number, z: number, type: BlockType) => {
+      setBlockOutsideChunkAt(x + xOffset, y, z + zOffset, type);
+    },
+    [xOffset, zOffset, setBlockOutsideChunkAt]
+  );
+
   const generateMesh = useCallback(() => {
     if (!meshRef.current || !atlas || !materialRef.current) {
       return;
@@ -443,6 +477,7 @@ const WorldChunk = ({
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         for (let z = 0; z < width; z++) {
+          loadSaveOutsideChunk(x, y, z);
           loadSave(x, y, z);
 
           const block = getBlockAt(x, y, z);

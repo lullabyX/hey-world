@@ -21,6 +21,17 @@ type WorldManager = {
   chunkKeyFor: (cx: number, cz: number) => string;
   removeBlockAt: (x: number, y: number, z: number) => void;
   addBlockAt: (x: number, y: number, z: number, type: BlockType) => void;
+  getBlockOutsideChunkAt: (
+    x: number,
+    y: number,
+    z: number
+  ) => BlockType | undefined;
+  setBlockOutsideChunkAt: (
+    x: number,
+    y: number,
+    z: number,
+    type: BlockType
+  ) => void;
 };
 
 export const WorldContext = createContext<WorldManager | null>(null);
@@ -35,6 +46,31 @@ export const WorldManagerProvider = ({
   const chunksRef = useRef<Group>(null);
   const chunkRegistryRef = useRef(new Map<string, WorldChunkHandle>());
   const playerPositionRef = useRef(new Vector3(32, 32, 32));
+
+  const blockOutsideChunkRef = useRef(new Map<string, BlockType>());
+
+  const keyForGlobalPosition = useCallback(
+    (x: number, y: number, z: number) => {
+      const cx = Math.floor(x / dimensions.width);
+      const cz = Math.floor(z / dimensions.width);
+      return `${cx}|${cz}|${x}|${y}|${z}`;
+    },
+    [dimensions.width]
+  );
+
+  const getBlockOutsideChunkAt = useCallback(
+    (x: number, y: number, z: number) => {
+      return blockOutsideChunkRef.current.get(keyForGlobalPosition(x, y, z));
+    },
+    [keyForGlobalPosition]
+  );
+
+  const setBlockOutsideChunkAt = useCallback(
+    (x: number, y: number, z: number, type: BlockType) => {
+      blockOutsideChunkRef.current.set(keyForGlobalPosition(x, y, z), type);
+    },
+    [keyForGlobalPosition]
+  );
 
   const chunkKeyFor = useCallback(
     (cx: number, cz: number) => `${cx}-${cz}`,
@@ -158,6 +194,8 @@ export const WorldManagerProvider = ({
       chunkKeyFor,
       removeBlockAt,
       addBlockAt,
+      getBlockOutsideChunkAt,
+      setBlockOutsideChunkAt,
     }),
     [
       chunksRef,
@@ -169,6 +207,8 @@ export const WorldManagerProvider = ({
       getChunkCoords,
       removeBlockAt,
       addBlockAt,
+      getBlockOutsideChunkAt,
+      setBlockOutsideChunkAt,
     ]
   );
 
