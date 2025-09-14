@@ -64,19 +64,11 @@ const WorldChunk = ({
   height,
   xPosition,
   zPosition,
-  scale,
-  magnitude,
-  offset,
-  seed,
 }: {
   width: number;
   height: number;
   xPosition: number;
   zPosition: number;
-  scale: number;
-  magnitude: number;
-  offset: number;
-  seed: number;
 }) => {
   const totalSize = width * width * height;
   const xOffset = xPosition * width;
@@ -142,7 +134,10 @@ const WorldChunk = ({
     unregisterChunk,
     getBlockOutsideChunkAt,
     setBlockOutsideChunkAt,
+    worldData,
   } = useWorldManager();
+
+  const { scale, magnitude, offset, seed } = worldData;
 
   const resources = useMemo(() => getResourceEntries(), []);
   const resourceControlsSchema = useMemo(
@@ -256,6 +251,18 @@ const WorldChunk = ({
     cutoutFlagAttr.needsUpdate = true;
   }, [shaderAttrib, meshRef]);
 
+  const loadSaveInsideChunk = useCallback(
+    (x: number, y: number, z: number) => {
+      if (!terrainData.current) return;
+
+      const modifiedBlockType = worldEdits.get(xOffset, zOffset, x, y, z);
+      if (modifiedBlockType) {
+        setBlockTypeAt(x, y, z, modifiedBlockType);
+      }
+    },
+    [terrainData, xOffset, zOffset, setBlockTypeAt]
+  );
+
   const loadSaveOutsideChunk = useCallback(
     (x: number, y: number, z: number) => {
       const modifiedBlockType = getBlockOutsideChunkAt(
@@ -268,6 +275,14 @@ const WorldChunk = ({
       }
     },
     [xOffset, zOffset, setBlockTypeAt, getBlockOutsideChunkAt]
+  );
+
+  const loadSave = useCallback(
+    (x: number, y: number, z: number) => {
+      loadSaveOutsideChunk(x, y, z);
+      loadSaveInsideChunk(x, y, z);
+    },
+    [loadSaveInsideChunk, loadSaveOutsideChunk]
   );
 
   const saveOutsideChunk = useCallback(
@@ -350,12 +365,12 @@ const WorldChunk = ({
   const generateTree = useCallback(
     (x: number, y: number, z: number, noise: number) => {
       const cfg = getTreeConfig();
+      const minH = cfg.heightMin;
+      const maxH = cfg.heightMax;
+      const desiredHeight = Math.floor(clampNoise(noise, minH, maxH));
+      const trunkHeight = Math.max(1, Math.min(maxH, desiredHeight));
       if (noise > cfg.thresholdMin && noise < cfg.thresholdMax) {
-        const minH = cfg.heightMin;
-        const maxH = cfg.heightMax;
-        const desiredHeight = Math.floor(clampNoise(noise, minH, maxH));
-        const trunkHeight = Math.max(1, Math.min(maxH, desiredHeight));
-
+        console.log('noise', trunkHeight);
         for (let i = 1; i < trunkHeight && y + i < height - 1; i++) {
           setBlockTypeAt(x, y + i, z, 'wood');
         }
@@ -390,7 +405,6 @@ const WorldChunk = ({
             treeNoiseValue * cfg.magnitude + cfg.offset
           );
           for (let y = 0; y < height; y++) {
-            loadSaveOutsideChunk(x, y, z);
             loadSave(x, y, z);
 
             const block = getBlockAt(x, y, z);
@@ -419,6 +433,7 @@ const WorldChunk = ({
       setBlockTypeAt,
       generateTree,
       getTreeConfig,
+      loadSave,
     ]
   );
 
@@ -472,18 +487,6 @@ const WorldChunk = ({
       xOffset,
       zOffset,
     ]
-  );
-
-  const loadSave = useCallback(
-    (x: number, y: number, z: number) => {
-      if (!terrainData.current) return;
-
-      const modifiedBlockType = worldEdits.get(xOffset, zOffset, x, y, z);
-      if (modifiedBlockType) {
-        setBlockTypeAt(x, y, z, modifiedBlockType);
-      }
-    },
-    [terrainData, xOffset, zOffset, setBlockTypeAt]
   );
 
   const generateMesh = useCallback(() => {
@@ -564,10 +567,8 @@ const WorldChunk = ({
     xOffset,
     zOffset,
     shaderAttrib,
-    loadSave,
     getBlockAt,
     setBlockInstanceIdAt,
-    loadSaveOutsideChunk,
     isBlockVisible,
     setGeometryAttributes,
     setShaderAttributesNeedsUpdate,

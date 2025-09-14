@@ -1,6 +1,5 @@
 import { useCallback, useLayoutEffect, useState } from 'react';
-import { button, useControls } from 'leva';
-import { dimensionsAtom, worldEdits } from '@/lib/store';
+import { dimensionsAtom } from '@/lib/store';
 import { useAtom } from 'jotai';
 import WorldChunk from './WorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
@@ -11,54 +10,15 @@ const World = () => {
 
   const [dimensions] = useAtom(dimensionsAtom);
 
-  const { playerPositionRef, getChunkCoords, chunkKeyFor, chunksRef } =
-    useWorldManager();
-
   const {
-    scale,
-    magnitude,
-    offset,
-    seed,
-    'Draw Distance': drawDistance,
-  } = useControls(
-    'Terrain',
-    {
-      'Draw Distance': {
-        value: 2,
-        min: 0,
-        max: 10,
-        step: 1,
-      },
-      scale: {
-        value: 30,
-        min: 20,
-        max: 100,
-        step: 1,
-      },
-      magnitude: {
-        value: 0.5,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      offset: {
-        value: 0.2,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      seed: {
-        value: 123456789,
-        min: 0,
-        max: 1000000000,
-        step: 1,
-      },
-      'Reset World': button(() => {
-        worldEdits.reset();
-      }),
-    },
-    { collapsed: true }
-  );
+    playerPositionRef,
+    getChunkCoords,
+    chunkKeyFor,
+    chunksRef,
+    worldData,
+  } = useWorldManager();
+
+  const { drawDistance } = worldData;
 
   const generateChunks = useCallback(() => {
     const { cx, cz } = getChunkCoords(
@@ -96,10 +56,6 @@ const World = () => {
               height={dimensions.height}
               xPosition={x}
               zPosition={z}
-              scale={scale}
-              magnitude={magnitude}
-              offset={offset}
-              seed={seed}
             />
           );
         }
@@ -121,10 +77,6 @@ const World = () => {
     });
   }, [
     dimensions,
-    scale,
-    magnitude,
-    offset,
-    seed,
     drawDistance,
     playerPositionRef,
     chunkKeyFor,
