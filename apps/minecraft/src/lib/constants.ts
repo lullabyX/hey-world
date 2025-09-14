@@ -9,7 +9,7 @@ export const jungleTreeNoise = {
   thresholdMin: 0.45,
   thresholdMax: 0.55,
   heightMin: 3,
-  heightMax: 7,
+  heightMax: 8,
   radiusMin: 2,
-  radiusMax: 5,
+  radiusMax: 4,
 };
