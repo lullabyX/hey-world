@@ -76,6 +76,11 @@ export const BLOCK_CONFIGS = {
     type: 'leaves' as const,
     color: '#80A755',
     textureTiles: {
+      tint: {
+        top: '#80A755',
+        side: '#80A755',
+        bottom: '#80A755',
+      },
       top: TILES.leaves,
       side: TILES.leaves,
       bottom: TILES.leaves,

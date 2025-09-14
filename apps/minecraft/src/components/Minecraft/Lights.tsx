@@ -65,7 +65,7 @@ const Lights = () => {
       <directionalLight
         ref={dirLightRef}
         position={[SIZE / 2, SIZE / 2.5, SIZE / 2]}
-        intensity={1.3}
+        intensity={1.5}
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.005}
@@ -78,7 +78,7 @@ const Lights = () => {
           far={100}
         />
       </directionalLight>
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={0.6} />
     </group>
   );
 };

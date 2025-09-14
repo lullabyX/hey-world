@@ -80,7 +80,10 @@ export const useWorldChunk = (
         }
 
         const adjacentBlock = getBlockAt(adjacentX, adjacentY, adjacentZ);
-        if (adjacentBlock?.type === 'empty') {
+        if (
+          adjacentBlock?.type === 'empty' ||
+          adjacentBlock?.type === 'leaves'
+        ) {
           return true;
         }
       }

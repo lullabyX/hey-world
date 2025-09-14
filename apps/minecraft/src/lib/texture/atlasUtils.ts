@@ -121,6 +121,7 @@ export const copyTextureTiles = ({
   tintTopArr,
   tintSideArr,
   tintBottomArr,
+  cutoutArr,
   fromInstanceId,
   toInstanceId,
 }: {
@@ -130,6 +131,7 @@ export const copyTextureTiles = ({
   tintTopArr: Float32Array;
   tintSideArr: Float32Array;
   tintBottomArr: Float32Array;
+  cutoutArr?: Float32Array;
   fromInstanceId: number;
   toInstanceId: number;
 }) => {
@@ -140,5 +142,9 @@ export const copyTextureTiles = ({
     copy3(tintTopArr, fromInstanceId, toInstanceId);
     copy3(tintSideArr, fromInstanceId, toInstanceId);
     copy3(tintBottomArr, fromInstanceId, toInstanceId);
+    if (cutoutArr) {
+      // 1-component copy
+      cutoutArr[toInstanceId] = cutoutArr[fromInstanceId] ?? 0;
+    }
   }
 };

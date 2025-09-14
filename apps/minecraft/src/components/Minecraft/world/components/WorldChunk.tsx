@@ -38,6 +38,8 @@ import {
 } from '../hooks/useWorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
 import { worldEdits } from '@/lib/store';
+import { jungleTreeNoise } from '@/lib/constants';
+import { clampNoise } from '@/helpers/noise-clamp';
 
 export type WorldChunkHandle = {
   meshRef: React.RefObject<InstancedMesh | null>;
@@ -94,6 +96,7 @@ const WorldChunk = ({
     const tintTopArr = new Float32Array(totalSize * 3);
     const tintSideArr = new Float32Array(totalSize * 3);
     const tintBottomArr = new Float32Array(totalSize * 3);
+    const cutoutArr = new Float32Array(totalSize);
 
     const uvTopAttr = new InstancedBufferAttribute(uvTopArr, 2);
     const uvSideAttr = new InstancedBufferAttribute(uvSideArr, 2);
@@ -101,6 +104,7 @@ const WorldChunk = ({
     const tintTopAttr = new InstancedBufferAttribute(tintTopArr, 3);
     const tintSideAttr = new InstancedBufferAttribute(tintSideArr, 3);
     const tintBottomAttr = new InstancedBufferAttribute(tintBottomArr, 3);
+    const cutoutFlagAttr = new InstancedBufferAttribute(cutoutArr, 1);
 
     return {
       uvTopArr,
@@ -109,6 +113,7 @@ const WorldChunk = ({
       tintTopArr,
       tintSideArr,
       tintBottomArr,
+      cutoutArr,
 
       uvTopAttr,
       uvSideAttr,
@@ -116,6 +121,7 @@ const WorldChunk = ({
       tintTopAttr,
       tintSideAttr,
       tintBottomAttr,
+      cutoutFlagAttr,
     };
   }, [totalSize]);
 
@@ -127,7 +133,12 @@ const WorldChunk = ({
     initializeTerrain,
   } = useWorldChunk(width, height, terrainData);
 
-  const { registerChunk, unregisterChunk } = useWorldManager();
+  const {
+    registerChunk,
+    unregisterChunk,
+    getBlockOutsideChunkAt,
+    setBlockOutsideChunkAt,
+  } = useWorldManager();
 
   const resources = useMemo(() => getResourceEntries(), []);
   const resourceControlsSchema = useMemo(
@@ -190,6 +201,7 @@ const WorldChunk = ({
       tintTopAttr,
       tintSideAttr,
       tintBottomAttr,
+      cutoutFlagAttr,
     } = shaderAttrib;
 
     geom.setAttribute('uvTop', uvTopAttr);
@@ -198,6 +210,7 @@ const WorldChunk = ({
     geom.setAttribute('tintTop', tintTopAttr);
     geom.setAttribute('tintSide', tintSideAttr);
     geom.setAttribute('tintBottom', tintBottomAttr);
+    geom.setAttribute('cutoutFlag', cutoutFlagAttr);
   }, [shaderAttrib, meshRef]);
 
   const setShaderAttributesNeedsUpdate = useCallback(() => {
@@ -210,6 +223,7 @@ const WorldChunk = ({
       tintTopAttr,
       tintSideAttr,
       tintBottomAttr,
+      cutoutFlagAttr,
     } = shaderAttrib;
 
     uvTopAttr.needsUpdate = true;
@@ -218,30 +232,141 @@ const WorldChunk = ({
     tintTopAttr.needsUpdate = true;
     tintSideAttr.needsUpdate = true;
     tintBottomAttr.needsUpdate = true;
+    cutoutFlagAttr.needsUpdate = true;
   }, [shaderAttrib, meshRef]);
+
+  const loadSaveOutsideChunk = useCallback(
+    (x: number, y: number, z: number) => {
+      const modifiedBlockType = getBlockOutsideChunkAt(
+        x + xOffset, // global x
+        y,
+        z + zOffset // global z
+      );
+      if (modifiedBlockType) {
+        setBlockTypeAt(x, y, z, modifiedBlockType);
+      }
+    },
+    [xOffset, zOffset, setBlockTypeAt, getBlockOutsideChunkAt]
+  );
+
+  const saveOutsideChunk = useCallback(
+    (x: number, y: number, z: number, type: BlockType) => {
+      setBlockOutsideChunkAt(x + xOffset, y, z + zOffset, type);
+    },
+    [xOffset, zOffset, setBlockOutsideChunkAt]
+  );
+
+  const generateTreeCanopee = useCallback(
+    (
+      x: number,
+      baseY: number,
+      z: number,
+      trunkHeight: number,
+      noise: number
+    ) => {
+      // Compute canopy radius from noise within configured bounds
+      const minRadius = jungleTreeNoise.radiusMin;
+      const maxRadius = jungleTreeNoise.radiusMax;
+      const radius = Math.max(
+        1,
+        Math.min(
+          maxRadius,
+          Math.floor(minRadius + noise * (maxRadius - minRadius))
+        )
+      );
+
+      // Center canopy just above the trunk top
+      const centerY = baseY - 1 + trunkHeight;
+
+      // Build a hemisphere of leaves (only dy >= 0) to avoid replacing trunk
+      const radiusSquared = radius * radius;
+      for (let dx = -radius; dx <= radius; dx++) {
+        for (let dy = 0; dy <= radius; dy++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const distSquared = dx * dx + dy * dy + dz * dz;
+            if (distSquared > radiusSquared) continue;
+
+            const px = x + dx;
+            const py = centerY + dy;
+            const pz = z + dz;
+
+            // Bounds check within this chunk
+            if (px < 0 || px >= width) {
+              saveOutsideChunk(px, py, pz, 'leaves');
+              continue;
+            }
+            if (py < 0 || py >= height) {
+              continue;
+            }
+            if (pz < 0 || pz >= width) {
+              saveOutsideChunk(px, py, pz, 'leaves');
+              continue;
+            }
+
+            // Do not overwrite the trunk top block directly
+            if (dx === 0 && dy === 0 && dz === 0) continue;
+
+            setBlockTypeAt(px, py, pz, 'leaves');
+          }
+        }
+      }
+    },
+    [width, height, setBlockTypeAt, saveOutsideChunk]
+  );
+
+  const generateTree = useCallback(
+    (x: number, y: number, z: number, noise: number) => {
+      if (
+        noise > jungleTreeNoise.thresholdMin &&
+        noise < jungleTreeNoise.thresholdMax
+      ) {
+        const minH = jungleTreeNoise.heightMin;
+        const maxH = jungleTreeNoise.heightMax;
+        const desiredHeight = Math.floor(minH + noise * (maxH - minH));
+        const trunkHeight = Math.max(1, Math.min(maxH, desiredHeight));
+
+        for (let i = 0; i < trunkHeight && y + i < height; i++) {
+          setBlockTypeAt(x, y + i, z, 'wood');
+        }
+
+        generateTreeCanopee(x, y, z, trunkHeight, noise);
+      }
+    },
+    [setBlockTypeAt, generateTreeCanopee, height]
+  );
 
   const generateTerrain = useCallback(
     ({ rng }: { rng: RandomNumberGenerator }) => {
       const simplexNoise = new SimplexNoise(rng);
       for (let x = 0; x < width; x++) {
         for (let z = 0; z < width; z++) {
-          const value = simplexNoise.noise(
-            (x + xOffset) / scale,
-            (z + zOffset) / scale
-          );
+          const globalX = x + xOffset;
+          const globalZ = z + zOffset;
+          const value = simplexNoise.noise(globalX / scale, globalZ / scale);
           const scaledValue = value * magnitude + offset;
 
           let _height = Math.floor(height * scaledValue);
 
           _height = Math.max(0, Math.min(height - 1, _height));
 
+          const treeNoiseValue = simplexNoise.noise(
+            globalX / jungleTreeNoise.scale,
+            globalZ / jungleTreeNoise.scale
+          );
+
+          const treeScaledNoiseValue = clampNoise(
+            treeNoiseValue * jungleTreeNoise.magnitude + jungleTreeNoise.offset
+          );
           for (let y = 0; y < height; y++) {
-            const isResource = getBlockAt(x, y, z)?.isResource;
+            const block = getBlockAt(x, y, z);
+            const isResource = block?.isResource;
+            const isWood = block?.type === 'wood';
             if (y === _height) {
               setBlockTypeAt(x, y, z, 'grass');
+              generateTree(x, y, z, treeScaledNoiseValue);
             } else if (y < _height && !isResource) {
               setBlockTypeAt(x, y, z, 'dirt');
-            } else if (y > _height) {
+            } else if (y > _height && !isWood) {
               setBlockTypeAt(x, y, z, 'empty');
             }
           }
@@ -251,13 +376,14 @@ const WorldChunk = ({
     [
       width,
       height,
-      getBlockAt,
-      setBlockTypeAt,
       scale,
       magnitude,
       offset,
       xOffset,
       zOffset,
+      getBlockAt,
+      setBlockTypeAt,
+      generateTree,
     ]
   );
 
@@ -342,6 +468,7 @@ const WorldChunk = ({
       tintTopArr,
       tintSideArr,
       tintBottomArr,
+      cutoutArr,
     } = shaderAttrib;
 
     const atlasScale = new Vector2(1 / atlas.cols, 1 / atlas.rows);
@@ -350,6 +477,7 @@ const WorldChunk = ({
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         for (let z = 0; z < width; z++) {
+          loadSaveOutsideChunk(x, y, z);
           loadSave(x, y, z);
 
           const block = getBlockAt(x, y, z);
@@ -376,6 +504,7 @@ const WorldChunk = ({
               tintBottomArr,
               atlas,
             });
+            cutoutArr[instanceId] = block?.type === 'leaves' ? 1 : 0;
             meshRef.current.count++;
           }
         }
@@ -406,6 +535,7 @@ const WorldChunk = ({
     loadSave,
     getBlockAt,
     setBlockInstanceIdAt,
+    loadSaveOutsideChunk,
     isBlockVisible,
     setGeometryAttributes,
     setShaderAttributesNeedsUpdate,
@@ -428,6 +558,7 @@ const WorldChunk = ({
         tintTopArr,
         tintSideArr,
         tintBottomArr,
+        cutoutArr,
       } = shaderAttrib;
 
       const matrix = new Matrix4();
@@ -446,6 +577,7 @@ const WorldChunk = ({
         tintBottomArr,
         atlas,
       });
+      cutoutArr[instanceId] = block?.type === 'leaves' ? 1 : 0;
     },
     [meshRef, atlas, shaderAttrib, getBlockAt, setBlockInstanceIdAt]
   );
@@ -480,6 +612,7 @@ const WorldChunk = ({
         tintTopArr,
         tintSideArr,
         tintBottomArr,
+        cutoutArr,
       } = shaderAttrib;
 
       copyTextureTiles({
@@ -489,6 +622,7 @@ const WorldChunk = ({
         tintTopArr,
         tintSideArr,
         tintBottomArr,
+        cutoutArr,
         fromInstanceId,
         toInstanceId,
       });
@@ -654,7 +788,7 @@ const WorldChunk = ({
       receiveShadow
     >
       <boxGeometry args={[1, 1, 1]} />
-      <meshLambertMaterial ref={materialRef} />
+      <meshLambertMaterial ref={materialRef} alphaTest={0.5} />
     </instancedMesh>
   );
 };
