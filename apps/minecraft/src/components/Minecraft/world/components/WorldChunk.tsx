@@ -235,6 +235,27 @@ const WorldChunk = ({
     cutoutFlagAttr.needsUpdate = true;
   }, [shaderAttrib, meshRef]);
 
+  const loadSaveOutsideChunk = useCallback(
+    (x: number, y: number, z: number) => {
+      const modifiedBlockType = getBlockOutsideChunkAt(
+        x + xOffset, // global x
+        y,
+        z + zOffset // global z
+      );
+      if (modifiedBlockType) {
+        setBlockTypeAt(x, y, z, modifiedBlockType);
+      }
+    },
+    [xOffset, zOffset, setBlockTypeAt, getBlockOutsideChunkAt]
+  );
+
+  const saveOutsideChunk = useCallback(
+    (x: number, y: number, z: number, type: BlockType) => {
+      setBlockOutsideChunkAt(x + xOffset, y, z + zOffset, type);
+    },
+    [xOffset, zOffset, setBlockOutsideChunkAt]
+  );
+
   const generateTreeCanopee = useCallback(
     (
       x: number,
@@ -290,7 +311,7 @@ const WorldChunk = ({
         }
       }
     },
-    [width, height, setBlockTypeAt]
+    [width, height, setBlockTypeAt, saveOutsideChunk]
   );
 
   const generateTree = useCallback(
@@ -311,7 +332,7 @@ const WorldChunk = ({
         generateTreeCanopee(x, y, z, trunkHeight, noise);
       }
     },
-    [setBlockTypeAt, generateTreeCanopee]
+    [setBlockTypeAt, generateTreeCanopee, height]
   );
 
   const generateTerrain = useCallback(
@@ -430,27 +451,6 @@ const WorldChunk = ({
     [terrainData, xOffset, zOffset, setBlockTypeAt]
   );
 
-  const loadSaveOutsideChunk = useCallback(
-    (x: number, y: number, z: number) => {
-      const modifiedBlockType = getBlockOutsideChunkAt(
-        x + xOffset, // global x
-        y,
-        z + zOffset // global z
-      );
-      if (modifiedBlockType) {
-        setBlockTypeAt(x, y, z, modifiedBlockType);
-      }
-    },
-    [xOffset, zOffset, setBlockTypeAt, getBlockOutsideChunkAt]
-  );
-
-  const saveOutsideChunk = useCallback(
-    (x: number, y: number, z: number, type: BlockType) => {
-      setBlockOutsideChunkAt(x + xOffset, y, z + zOffset, type);
-    },
-    [xOffset, zOffset, setBlockOutsideChunkAt]
-  );
-
   const generateMesh = useCallback(() => {
     if (!meshRef.current || !atlas || !materialRef.current) {
       return;
@@ -535,6 +535,7 @@ const WorldChunk = ({
     loadSave,
     getBlockAt,
     setBlockInstanceIdAt,
+    loadSaveOutsideChunk,
     isBlockVisible,
     setGeometryAttributes,
     setShaderAttributesNeedsUpdate,
