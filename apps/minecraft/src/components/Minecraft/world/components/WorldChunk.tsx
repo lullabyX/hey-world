@@ -96,6 +96,7 @@ const WorldChunk = ({
     const tintTopArr = new Float32Array(totalSize * 3);
     const tintSideArr = new Float32Array(totalSize * 3);
     const tintBottomArr = new Float32Array(totalSize * 3);
+    const cutoutArr = new Float32Array(totalSize);
 
     const uvTopAttr = new InstancedBufferAttribute(uvTopArr, 2);
     const uvSideAttr = new InstancedBufferAttribute(uvSideArr, 2);
@@ -103,6 +104,7 @@ const WorldChunk = ({
     const tintTopAttr = new InstancedBufferAttribute(tintTopArr, 3);
     const tintSideAttr = new InstancedBufferAttribute(tintSideArr, 3);
     const tintBottomAttr = new InstancedBufferAttribute(tintBottomArr, 3);
+    const cutoutFlagAttr = new InstancedBufferAttribute(cutoutArr, 1);
 
     return {
       uvTopArr,
@@ -111,6 +113,7 @@ const WorldChunk = ({
       tintTopArr,
       tintSideArr,
       tintBottomArr,
+      cutoutArr,
 
       uvTopAttr,
       uvSideAttr,
@@ -118,6 +121,7 @@ const WorldChunk = ({
       tintTopAttr,
       tintSideAttr,
       tintBottomAttr,
+      cutoutFlagAttr,
     };
   }, [totalSize]);
 
@@ -192,6 +196,7 @@ const WorldChunk = ({
       tintTopAttr,
       tintSideAttr,
       tintBottomAttr,
+      cutoutFlagAttr,
     } = shaderAttrib;
 
     geom.setAttribute('uvTop', uvTopAttr);
@@ -200,6 +205,7 @@ const WorldChunk = ({
     geom.setAttribute('tintTop', tintTopAttr);
     geom.setAttribute('tintSide', tintSideAttr);
     geom.setAttribute('tintBottom', tintBottomAttr);
+    geom.setAttribute('cutoutFlag', cutoutFlagAttr);
   }, [shaderAttrib, meshRef]);
 
   const setShaderAttributesNeedsUpdate = useCallback(() => {
@@ -212,6 +218,7 @@ const WorldChunk = ({
       tintTopAttr,
       tintSideAttr,
       tintBottomAttr,
+      cutoutFlagAttr,
     } = shaderAttrib;
 
     uvTopAttr.needsUpdate = true;
@@ -220,6 +227,7 @@ const WorldChunk = ({
     tintTopAttr.needsUpdate = true;
     tintSideAttr.needsUpdate = true;
     tintBottomAttr.needsUpdate = true;
+    cutoutFlagAttr.needsUpdate = true;
   }, [shaderAttrib, meshRef]);
 
   const generateTreeCanopee = useCallback(
@@ -426,6 +434,7 @@ const WorldChunk = ({
       tintTopArr,
       tintSideArr,
       tintBottomArr,
+      cutoutArr,
     } = shaderAttrib;
 
     const atlasScale = new Vector2(1 / atlas.cols, 1 / atlas.rows);
@@ -460,6 +469,7 @@ const WorldChunk = ({
               tintBottomArr,
               atlas,
             });
+            cutoutArr[instanceId] = block?.type === 'leaves' ? 1 : 0;
             meshRef.current.count++;
           }
         }
@@ -512,6 +522,7 @@ const WorldChunk = ({
         tintTopArr,
         tintSideArr,
         tintBottomArr,
+        cutoutArr,
       } = shaderAttrib;
 
       const matrix = new Matrix4();
@@ -530,6 +541,7 @@ const WorldChunk = ({
         tintBottomArr,
         atlas,
       });
+      cutoutArr[instanceId] = block?.type === 'leaves' ? 1 : 0;
     },
     [meshRef, atlas, shaderAttrib, getBlockAt, setBlockInstanceIdAt]
   );
@@ -564,6 +576,7 @@ const WorldChunk = ({
         tintTopArr,
         tintSideArr,
         tintBottomArr,
+        cutoutArr,
       } = shaderAttrib;
 
       copyTextureTiles({
@@ -573,6 +586,7 @@ const WorldChunk = ({
         tintTopArr,
         tintSideArr,
         tintBottomArr,
+        cutoutArr,
         fromInstanceId,
         toInstanceId,
       });
@@ -738,7 +752,7 @@ const WorldChunk = ({
       receiveShadow
     >
       <boxGeometry args={[1, 1, 1]} />
-      <meshLambertMaterial ref={materialRef} />
+      <meshLambertMaterial ref={materialRef} alphaTest={0.5} />
     </instancedMesh>
   );
 };

@@ -14,10 +14,12 @@ export function createAtlasOnBeforeCompile(uniformRefs: {
         attribute vec2 uvSide;
         attribute vec2 uvBottom;
         attribute vec3 tintTop, tintSide, tintBottom;
+        attribute float cutoutFlag;
         uniform vec2 atlasScale;
         uniform vec2 atlasPadding;
         varying vec2 vUvAtlas;
         varying vec3 vTint;
+        varying float vCutoutFlag;
       ` +
       shader.vertexShader.replace(
         '#include <uv_vertex>',
@@ -47,6 +49,7 @@ export function createAtlasOnBeforeCompile(uniformRefs: {
         }
         vUvAtlas = (baseUv * (tileScale - 2.0 * atlasPadding)) + (_uvOffset + atlasPadding);
         vTint = (normal.y > 0.5) ? tintTop : ((normal.y < -0.5) ? tintBottom : tintSide);
+        vCutoutFlag = cutoutFlag;
         `
       );
     // Ensure the map UV passed to the fragment uses our atlas coordinates
@@ -60,6 +63,7 @@ export function createAtlasOnBeforeCompile(uniformRefs: {
       `
         varying vec2 vUvAtlas;
         varying vec3 vTint;
+        varying float vCutoutFlag;
       ` +
       shader.fragmentShader.replace(
         '#include <map_fragment>',
@@ -69,6 +73,11 @@ export function createAtlasOnBeforeCompile(uniformRefs: {
           #ifdef DECODE_VIDEO_TEXTURE
             sampledDiffuseColor = sRGBTransferEOTF( sampledDiffuseColor );
           #endif
+          // Cutout for leaves: drop low-alpha or near-black texels
+          if ( vCutoutFlag > 0.5 ) {
+            if ( sampledDiffuseColor.a < 0.5 ) discard;
+            if ( all(lessThan(sampledDiffuseColor.rgb, vec3(0.05))) ) discard;
+          }
           diffuseColor *= sampledDiffuseColor;
         #endif
         diffuseColor.rgb *= vTint;`
