@@ -134,6 +134,8 @@ const WorldChunk = ({
     unregisterChunk,
     getBlockOutsideChunkAt,
     setBlockOutsideChunkAt,
+    addBlockAt: addBlockAtOutsideChunk,
+    getBlockAt: getBlockAtOutsideChunk,
     worldData,
   } = useWorldManager();
 
@@ -272,9 +274,25 @@ const WorldChunk = ({
       );
       if (modifiedBlockType) {
         setBlockTypeAt(x, y, z, modifiedBlockType);
+        const block = getBlockAtOutsideChunk(x + xOffset, y, z + zOffset);
+        if (block && block.type === 'empty') {
+          addBlockAtOutsideChunk(
+            x + xOffset,
+            y,
+            z + zOffset,
+            modifiedBlockType
+          );
+        }
       }
     },
-    [xOffset, zOffset, setBlockTypeAt, getBlockOutsideChunkAt]
+    [
+      xOffset,
+      zOffset,
+      setBlockTypeAt,
+      getBlockOutsideChunkAt,
+      addBlockAtOutsideChunk,
+      getBlockAtOutsideChunk,
+    ]
   );
 
   const loadSave = useCallback(
@@ -340,6 +358,10 @@ const WorldChunk = ({
 
             // Do not overwrite the trunk top block directly
             if (dx === 0 && dy === 0 && dz === 0) continue;
+            const block = getBlockAt(px, py, pz);
+            if (block && (block.type === 'wood' || block.type === 'leaves')) {
+              continue;
+            }
 
             // Bounds check within this chunk
             if (px < 0 || px >= width) {
@@ -359,7 +381,7 @@ const WorldChunk = ({
         }
       }
     },
-    [width, height, setBlockTypeAt, saveOutsideChunk, getTreeConfig]
+    [width, height, getBlockAt, setBlockTypeAt, saveOutsideChunk, getTreeConfig]
   );
 
   const generateTree = useCallback(
