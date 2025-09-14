@@ -3,7 +3,7 @@ import { BlockType } from './block';
 
 export const dimensionsAtom = atom({
   width: 32,
-  height: 16,
+  height: 64,
 });
 
 const STORAGE_KEY = 'mc:edits:v1';

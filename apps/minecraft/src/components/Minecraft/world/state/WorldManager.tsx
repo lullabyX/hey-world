@@ -1,6 +1,7 @@
 'use client';
 
 import { dimensionsAtom, worldEdits } from '@/lib/store';
+import { button, useControls } from 'leva';
 import { useAtom } from 'jotai';
 import { createContext, RefObject, useCallback, useMemo, useRef } from 'react';
 import { Group, Vector3 } from 'three';
@@ -32,6 +33,13 @@ type WorldManager = {
     z: number,
     type: BlockType
   ) => void;
+  worldData: {
+    drawDistance: number;
+    scale: number;
+    magnitude: number;
+    offset: number;
+    seed: number;
+  };
 };
 
 export const WorldContext = createContext<WorldManager | null>(null);
@@ -47,7 +55,57 @@ export const WorldManagerProvider = ({
   const chunkRegistryRef = useRef(new Map<string, WorldChunkHandle>());
   const playerPositionRef = useRef(new Vector3(32, 32, 32));
 
-  const blockOutsideChunkRef = useRef(new Map<string, BlockType>());
+  const {
+    scale,
+    magnitude,
+    offset,
+    seed,
+    'Draw Distance': drawDistance,
+  } = useControls(
+    'Terrain',
+    {
+      'Draw Distance': {
+        value: 2,
+        min: 0,
+        max: 10,
+        step: 1,
+      },
+      scale: {
+        value: 30,
+        min: 20,
+        max: 100,
+        step: 1,
+      },
+      magnitude: {
+        value: 0.5,
+        min: 0,
+        max: 1,
+        step: 0.01,
+      },
+      offset: {
+        value: 0.2,
+        min: 0,
+        max: 1,
+        step: 0.01,
+      },
+      seed: {
+        value: 123456789,
+        min: 0,
+        max: 1000000000,
+        step: 1,
+      },
+      'Reset World': button(() => {
+        worldEdits.reset();
+      }),
+    },
+    { collapsed: true }
+  );
+
+  const blockOutsideChunk = useMemo(
+    () => new Map<string, BlockType>(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scale, magnitude, offset, seed]
+  );
 
   const keyForGlobalPosition = useCallback(
     (x: number, y: number, z: number) => {
@@ -60,16 +118,16 @@ export const WorldManagerProvider = ({
 
   const getBlockOutsideChunkAt = useCallback(
     (x: number, y: number, z: number) => {
-      return blockOutsideChunkRef.current.get(keyForGlobalPosition(x, y, z));
+      return blockOutsideChunk.get(keyForGlobalPosition(x, y, z));
     },
-    [keyForGlobalPosition]
+    [blockOutsideChunk, keyForGlobalPosition]
   );
 
   const setBlockOutsideChunkAt = useCallback(
     (x: number, y: number, z: number, type: BlockType) => {
-      blockOutsideChunkRef.current.set(keyForGlobalPosition(x, y, z), type);
+      blockOutsideChunk.set(keyForGlobalPosition(x, y, z), type);
     },
-    [keyForGlobalPosition]
+    [blockOutsideChunk, keyForGlobalPosition]
   );
 
   const chunkKeyFor = useCallback(
@@ -196,6 +254,13 @@ export const WorldManagerProvider = ({
       addBlockAt,
       getBlockOutsideChunkAt,
       setBlockOutsideChunkAt,
+      worldData: {
+        drawDistance,
+        scale,
+        magnitude,
+        offset,
+        seed,
+      },
     }),
     [
       chunksRef,
@@ -209,6 +274,11 @@ export const WorldManagerProvider = ({
       addBlockAt,
       getBlockOutsideChunkAt,
       setBlockOutsideChunkAt,
+      drawDistance,
+      scale,
+      magnitude,
+      offset,
+      seed,
     ]
   );
 
