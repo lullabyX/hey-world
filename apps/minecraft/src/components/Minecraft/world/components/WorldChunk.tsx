@@ -38,7 +38,11 @@ import {
 } from '../hooks/useWorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
 import { worldEdits } from '@/lib/store';
-import { jungleTreeNoise } from '@/lib/constants';
+import {
+  desertTreeNoise,
+  jungleTreeNoise,
+  tundraTreeNoise,
+} from '@/lib/constants';
 import { clampNoise } from '@/helpers/noise-clamp';
 
 export type WorldChunkHandle = {
@@ -190,6 +194,23 @@ const WorldChunk = ({
   }) as Record<string, number>;
   const resourceControlsKey = JSON.stringify(resourceControls);
 
+  const treeControls = useControls(
+    'Trees',
+    {
+      biome: {
+        label: 'biome',
+        options: {
+          Meadow: 'meadow',
+          Jungle: 'jungle',
+          Tundra: 'tundra',
+          Desert: 'desert',
+        },
+        value: 'meadow',
+      },
+    },
+    { collapsed: false }
+  ) as { biome: 'meadow' | 'jungle' | 'tundra' | 'desert' };
+
   const setGeometryAttributes = useCallback(() => {
     if (!meshRef.current) return;
 
@@ -256,6 +277,20 @@ const WorldChunk = ({
     [xOffset, zOffset, setBlockOutsideChunkAt]
   );
 
+  const getTreeConfig = useCallback(() => {
+    switch (treeControls.biome) {
+      case 'jungle':
+        return jungleTreeNoise;
+      case 'tundra':
+        return tundraTreeNoise;
+      case 'desert':
+        return desertTreeNoise;
+      case 'meadow':
+      default:
+        return tundraTreeNoise;
+    }
+  }, [treeControls.biome]);
+
   const generateTreeCanopee = useCallback(
     (
       x: number,
@@ -265,15 +300,10 @@ const WorldChunk = ({
       noise: number
     ) => {
       // Compute canopy radius from noise within configured bounds
-      const minRadius = jungleTreeNoise.radiusMin;
-      const maxRadius = jungleTreeNoise.radiusMax;
-      const radius = Math.max(
-        1,
-        Math.min(
-          maxRadius,
-          Math.floor(minRadius + noise * (maxRadius - minRadius))
-        )
-      );
+      const cfg = getTreeConfig();
+      const minRadius = cfg.radiusMin;
+      const maxRadius = cfg.radiusMax;
+      const radius = Math.round(clampNoise(noise, minRadius, maxRadius));
 
       // Center canopy just above the trunk top
       const centerY = baseY - 1 + trunkHeight;
@@ -283,12 +313,18 @@ const WorldChunk = ({
       for (let dx = -radius; dx <= radius; dx++) {
         for (let dy = 0; dy <= radius; dy++) {
           for (let dz = -radius; dz <= radius; dz++) {
-            const distSquared = dx * dx + dy * dy + dz * dz;
+            const distSquared =
+              Math.abs(dx) * Math.abs(dx) +
+              Math.abs(dy) * Math.abs(dy) +
+              Math.abs(dz) * Math.abs(dz);
             if (distSquared > radiusSquared) continue;
 
             const px = x + dx;
             const py = centerY + dy;
             const pz = z + dz;
+
+            // Do not overwrite the trunk top block directly
+            if (dx === 0 && dy === 0 && dz === 0) continue;
 
             // Bounds check within this chunk
             if (px < 0 || px >= width) {
@@ -303,36 +339,31 @@ const WorldChunk = ({
               continue;
             }
 
-            // Do not overwrite the trunk top block directly
-            if (dx === 0 && dy === 0 && dz === 0) continue;
-
             setBlockTypeAt(px, py, pz, 'leaves');
           }
         }
       }
     },
-    [width, height, setBlockTypeAt, saveOutsideChunk]
+    [width, height, setBlockTypeAt, saveOutsideChunk, getTreeConfig]
   );
 
   const generateTree = useCallback(
     (x: number, y: number, z: number, noise: number) => {
-      if (
-        noise > jungleTreeNoise.thresholdMin &&
-        noise < jungleTreeNoise.thresholdMax
-      ) {
-        const minH = jungleTreeNoise.heightMin;
-        const maxH = jungleTreeNoise.heightMax;
-        const desiredHeight = Math.floor(minH + noise * (maxH - minH));
+      const cfg = getTreeConfig();
+      if (noise > cfg.thresholdMin && noise < cfg.thresholdMax) {
+        const minH = cfg.heightMin;
+        const maxH = cfg.heightMax;
+        const desiredHeight = Math.floor(clampNoise(noise, minH, maxH));
         const trunkHeight = Math.max(1, Math.min(maxH, desiredHeight));
 
-        for (let i = 0; i < trunkHeight && y + i < height; i++) {
+        for (let i = 1; i < trunkHeight && y + i < height - 1; i++) {
           setBlockTypeAt(x, y + i, z, 'wood');
         }
 
         generateTreeCanopee(x, y, z, trunkHeight, noise);
       }
     },
-    [setBlockTypeAt, generateTreeCanopee, height]
+    [setBlockTypeAt, generateTreeCanopee, height, getTreeConfig]
   );
 
   const generateTerrain = useCallback(
@@ -349,24 +380,27 @@ const WorldChunk = ({
 
           _height = Math.max(0, Math.min(height - 1, _height));
 
+          const cfg = getTreeConfig();
           const treeNoiseValue = simplexNoise.noise(
-            globalX / jungleTreeNoise.scale,
-            globalZ / jungleTreeNoise.scale
+            globalX / cfg.scale,
+            globalZ / cfg.scale
           );
 
           const treeScaledNoiseValue = clampNoise(
-            treeNoiseValue * jungleTreeNoise.magnitude + jungleTreeNoise.offset
+            treeNoiseValue * cfg.magnitude + cfg.offset
           );
           for (let y = 0; y < height; y++) {
+            loadSaveOutsideChunk(x, y, z);
+            loadSave(x, y, z);
+
             const block = getBlockAt(x, y, z);
             const isResource = block?.isResource;
-            const isWood = block?.type === 'wood';
             if (y === _height) {
               setBlockTypeAt(x, y, z, 'grass');
               generateTree(x, y, z, treeScaledNoiseValue);
             } else if (y < _height && !isResource) {
               setBlockTypeAt(x, y, z, 'dirt');
-            } else if (y > _height && !isWood) {
+            } else if (y > _height && isResource) {
               setBlockTypeAt(x, y, z, 'empty');
             }
           }
@@ -384,6 +418,7 @@ const WorldChunk = ({
       getBlockAt,
       setBlockTypeAt,
       generateTree,
+      getTreeConfig,
     ]
   );
 
@@ -477,9 +512,6 @@ const WorldChunk = ({
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         for (let z = 0; z < width; z++) {
-          loadSaveOutsideChunk(x, y, z);
-          loadSave(x, y, z);
-
           const block = getBlockAt(x, y, z);
           const notEmptyBlock = block && block.type !== 'empty';
           const _isBlockVisible = isBlockVisible(x, y, z);
