@@ -1,4 +1,4 @@
-import { BlockType } from '../block';
+import { BlockType } from '@/lib/block';
 
 export const BIOME_CONFIGS = {
   jungle: {

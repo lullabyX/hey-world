@@ -44,6 +44,7 @@ import {
   tundraTreeNoise,
 } from '@/lib/constants';
 import { clampNoise } from '@/helpers/noise-clamp';
+import { BIOME_CONFIGS, BiomeType, getBiome } from '@/lib/biome';
 
 export type WorldChunkHandle = {
   meshRef: React.RefObject<InstancedMesh | null>;
@@ -302,30 +303,17 @@ const WorldChunk = ({
     [xOffset, zOffset, setBlockOutsideChunkAt]
   );
 
-  const getTreeConfig = useCallback(() => {
-    switch (treeControls.biome) {
-      case 'jungle':
-        return jungleTreeNoise;
-      case 'tundra':
-        return tundraTreeNoise;
-      case 'desert':
-        return desertTreeNoise;
-      case 'meadow':
-      default:
-        return tundraTreeNoise;
-    }
-  }, [treeControls.biome]);
-
   const generateTreeCanopee = useCallback(
     (
       x: number,
       baseY: number,
       z: number,
       trunkHeight: number,
-      noise: number
+      noise: number,
+      biome: BiomeType
     ) => {
       // Compute canopy radius from noise within configured bounds
-      const cfg = getTreeConfig();
+      const cfg = BIOME_CONFIGS[biome].tree;
       const minRadius = cfg.radiusMin;
       const maxRadius = cfg.radiusMax;
       const radius = Math.round(clampNoise(noise, minRadius, maxRadius));
@@ -373,26 +361,27 @@ const WorldChunk = ({
         }
       }
     },
-    [width, height, getBlockAt, setBlockTypeAt, saveOutsideChunk, getTreeConfig]
+    [width, height, getBlockAt, setBlockTypeAt, saveOutsideChunk]
   );
 
   const generateTree = useCallback(
-    (x: number, y: number, z: number, noise: number) => {
-      const cfg = getTreeConfig();
-      const minH = cfg.heightMin;
-      const maxH = cfg.heightMax;
+    (x: number, y: number, z: number, noise: number, biome: BiomeType) => {
+      const treeConfig = BIOME_CONFIGS[biome].tree;
+      const minH = treeConfig.heightMin;
+      const maxH = treeConfig.heightMax;
       const desiredHeight = Math.floor(clampNoise(noise, minH, maxH));
       const trunkHeight = Math.max(1, Math.min(maxH, desiredHeight));
-      if (noise > cfg.thresholdMin && noise < cfg.thresholdMax) {
-        console.log('noise', trunkHeight);
+      if (noise > treeConfig.thresholdMin && noise < treeConfig.thresholdMax) {
         for (let i = 1; i < trunkHeight && y + i < height - 1; i++) {
           setBlockTypeAt(x, y + i, z, 'wood');
         }
 
-        generateTreeCanopee(x, y, z, trunkHeight, noise);
+        if (treeConfig.hasCanopee) {
+          generateTreeCanopee(x, y, z, trunkHeight, noise, biome);
+        }
       }
     },
-    [setBlockTypeAt, generateTreeCanopee, height, getTreeConfig]
+    [setBlockTypeAt, generateTreeCanopee, height]
   );
 
   const generateTerrain = useCallback(
@@ -409,14 +398,40 @@ const WorldChunk = ({
 
           _height = Math.max(0, Math.min(height - 1, _height));
 
-          const cfg = getTreeConfig();
+          const biomeNoiseValue = simplexNoise.noise(
+            globalX / scale,
+            globalZ / scale
+          );
+          const biomeNoiseScaledValue = biomeNoiseValue * magnitude + offset;
+
+          const biomeType = getBiome(biomeNoiseScaledValue);
+          console.log('biomeType', biomeNoiseScaledValue);
+
+          let topBlockType: BlockType = 'grass';
+
+          switch (biomeType) {
+            case 'jungle':
+              topBlockType = 'jungle_grass';
+              break;
+            case 'tundra':
+              topBlockType = 'snow';
+              break;
+            case 'desert':
+              topBlockType = 'sand';
+              break;
+            case 'meadow':
+              topBlockType = 'grass';
+              break;
+          }
+
+          const treeConfig = BIOME_CONFIGS[biomeType].tree;
           const treeNoiseValue = simplexNoise.noise(
-            globalX / cfg.scale,
-            globalZ / cfg.scale
+            globalX / treeConfig.scale,
+            globalZ / treeConfig.scale
           );
 
           const treeScaledNoiseValue = clampNoise(
-            treeNoiseValue * cfg.magnitude + cfg.offset
+            treeNoiseValue * treeConfig.magnitude + treeConfig.offset
           );
           for (let y = 0; y < height; y++) {
             loadBlocksFromOutsideChunk(x, y, z);
@@ -424,8 +439,8 @@ const WorldChunk = ({
             const block = getBlockAt(x, y, z);
             const isResource = block?.isResource;
             if (y === _height) {
-              setBlockTypeAt(x, y, z, 'grass');
-              generateTree(x, y, z, treeScaledNoiseValue);
+              setBlockTypeAt(x, y, z, topBlockType);
+              generateTree(x, y, z, treeScaledNoiseValue, biomeType);
             } else if (y < _height && !isResource) {
               setBlockTypeAt(x, y, z, 'dirt');
             } else if (y > _height && isResource) {
@@ -448,7 +463,6 @@ const WorldChunk = ({
       getBlockAt,
       setBlockTypeAt,
       generateTree,
-      getTreeConfig,
       loadUserSave,
     ]
   );

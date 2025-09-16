@@ -27,7 +27,7 @@ export const TILES = {
   cactusTop: 69,
   cactusSide: 70,
 
-  snow: 50,
+  snow: 66,
 
   // foliage
   leaves: 53,
@@ -43,6 +43,18 @@ export const BLOCK_CONFIGS = {
     textureTiles: {
       tint: {
         top: '#aedf69',
+      },
+      top: TILES.grass,
+      side: TILES.grassSide,
+      bottom: TILES.dirt,
+    },
+  },
+  jungle_grass: {
+    type: 'grass' as const,
+    color: '#7FB238',
+    textureTiles: {
+      tint: {
+        top: '#7FB238',
       },
       top: TILES.grass,
       side: TILES.grassSide,
@@ -89,16 +101,25 @@ export const BLOCK_CONFIGS = {
   },
   leaves: {
     type: 'leaves' as const,
-    color: '##63A948',
+    color: '#63A948',
     textureTiles: {
       tint: {
-        top: '##63A948',
-        side: '##63A948',
-        bottom: '##63A948',
+        top: '#63A948',
+        side: '#63A948',
+        bottom: '#63A948',
       },
       top: TILES.leaves,
       side: TILES.leaves,
       bottom: TILES.leaves,
+    },
+  },
+  snow: {
+    type: 'snow' as const,
+    color: '#FFFFFF',
+    textureTiles: {
+      top: TILES.snow,
+      side: TILES.snow,
+      bottom: TILES.snow,
     },
   },
   cactus: {
@@ -115,9 +136,9 @@ export const BLOCK_CONFIGS = {
     color: '#30BB0B',
     textureTiles: {
       tint: {
-        top: '##30BB0B',
-        side: '##30BB0B',
-        bottom: '##30BB0B',
+        top: '#30BB0B',
+        side: '#30BB0B',
+        bottom: '#30BB0B',
       },
       top: TILES.leaves,
       side: TILES.leaves,
