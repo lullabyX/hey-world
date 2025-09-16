@@ -71,19 +71,19 @@ export const WorldManagerProvider = ({
         step: 1,
       },
       scale: {
-        value: 30,
+        value: 50,
         min: 20,
         max: 100,
         step: 1,
       },
       magnitude: {
-        value: 0.5,
+        value: 0.15,
         min: 0,
         max: 1,
         step: 0.01,
       },
       offset: {
-        value: 0.2,
+        value: 0.12,
         min: 0,
         max: 1,
         step: 0.01,

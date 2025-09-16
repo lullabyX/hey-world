@@ -134,6 +134,8 @@ const WorldChunk = ({
     unregisterChunk,
     getBlockOutsideChunkAt,
     setBlockOutsideChunkAt,
+    addBlockAt: addBlockAtOutsideChunk,
+    getBlockAt: getBlockAtOutsideChunk,
     worldData,
   } = useWorldManager();
 
@@ -251,7 +253,7 @@ const WorldChunk = ({
     cutoutFlagAttr.needsUpdate = true;
   }, [shaderAttrib, meshRef]);
 
-  const loadSaveInsideChunk = useCallback(
+  const loadUserSave = useCallback(
     (x: number, y: number, z: number) => {
       if (!terrainData.current) return;
 
@@ -263,7 +265,7 @@ const WorldChunk = ({
     [terrainData, xOffset, zOffset, setBlockTypeAt]
   );
 
-  const loadSaveOutsideChunk = useCallback(
+  const loadBlocksFromOutsideChunk = useCallback(
     (x: number, y: number, z: number) => {
       const modifiedBlockType = getBlockOutsideChunkAt(
         x + xOffset, // global x
@@ -272,17 +274,25 @@ const WorldChunk = ({
       );
       if (modifiedBlockType) {
         setBlockTypeAt(x, y, z, modifiedBlockType);
+        const block = getBlockAtOutsideChunk(x + xOffset, y, z + zOffset);
+        if (block && block.type === 'empty') {
+          addBlockAtOutsideChunk(
+            x + xOffset,
+            y,
+            z + zOffset,
+            modifiedBlockType
+          );
+        }
       }
     },
-    [xOffset, zOffset, setBlockTypeAt, getBlockOutsideChunkAt]
-  );
-
-  const loadSave = useCallback(
-    (x: number, y: number, z: number) => {
-      loadSaveOutsideChunk(x, y, z);
-      loadSaveInsideChunk(x, y, z);
-    },
-    [loadSaveInsideChunk, loadSaveOutsideChunk]
+    [
+      xOffset,
+      zOffset,
+      setBlockTypeAt,
+      getBlockOutsideChunkAt,
+      addBlockAtOutsideChunk,
+      getBlockAtOutsideChunk,
+    ]
   );
 
   const saveOutsideChunk = useCallback(
@@ -340,6 +350,10 @@ const WorldChunk = ({
 
             // Do not overwrite the trunk top block directly
             if (dx === 0 && dy === 0 && dz === 0) continue;
+            const block = getBlockAt(px, py, pz);
+            if (block && (block.type === 'wood' || block.type === 'leaves')) {
+              continue;
+            }
 
             // Bounds check within this chunk
             if (px < 0 || px >= width) {
@@ -359,7 +373,7 @@ const WorldChunk = ({
         }
       }
     },
-    [width, height, setBlockTypeAt, saveOutsideChunk, getTreeConfig]
+    [width, height, getBlockAt, setBlockTypeAt, saveOutsideChunk, getTreeConfig]
   );
 
   const generateTree = useCallback(
@@ -405,7 +419,7 @@ const WorldChunk = ({
             treeNoiseValue * cfg.magnitude + cfg.offset
           );
           for (let y = 0; y < height; y++) {
-            loadSave(x, y, z);
+            loadBlocksFromOutsideChunk(x, y, z);
 
             const block = getBlockAt(x, y, z);
             const isResource = block?.isResource;
@@ -417,6 +431,8 @@ const WorldChunk = ({
             } else if (y > _height && isResource) {
               setBlockTypeAt(x, y, z, 'empty');
             }
+
+            loadUserSave(x, y, z);
           }
         }
       }
@@ -433,7 +449,7 @@ const WorldChunk = ({
       setBlockTypeAt,
       generateTree,
       getTreeConfig,
-      loadSave,
+      loadUserSave,
     ]
   );
 
