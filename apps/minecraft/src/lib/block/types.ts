@@ -10,6 +10,7 @@ export const TILES = {
   sand: 18,
   treeSide: 20,
   treeTop: 21,
+  oakSide: 116,
 
   // misc
   cloud: 22,
@@ -22,6 +23,11 @@ export const TILES = {
   diamondOre: 50,
   redstoneOre: 51,
   lapisOre: 176,
+
+  cactusTop: 69,
+  cactusSide: 70,
+
+  snow: 50,
 
   // foliage
   leaves: 53,
@@ -72,14 +78,46 @@ export const BLOCK_CONFIGS = {
       bottom: TILES.treeTop,
     },
   },
+  oak_wood: {
+    type: 'oak_wood' as const,
+    color: '#8F7748',
+    textureTiles: {
+      top: TILES.treeTop,
+      side: TILES.oakSide,
+      bottom: TILES.oakSide,
+    },
+  },
   leaves: {
     type: 'leaves' as const,
-    color: '#80A755',
+    color: '##63A948',
     textureTiles: {
       tint: {
-        top: '#80A755',
-        side: '#80A755',
-        bottom: '#80A755',
+        top: '##63A948',
+        side: '##63A948',
+        bottom: '##63A948',
+      },
+      top: TILES.leaves,
+      side: TILES.leaves,
+      bottom: TILES.leaves,
+    },
+  },
+  cactus: {
+    type: 'cactus' as const,
+    color: '#30BB0B',
+    textureTiles: {
+      top: TILES.cactusTop,
+      side: TILES.cactusSide,
+      bottom: TILES.cactusTop,
+    },
+  },
+  jungle_leaves: {
+    type: 'jungle_leaves' as const,
+    color: '#30BB0B',
+    textureTiles: {
+      tint: {
+        top: '##30BB0B',
+        side: '##30BB0B',
+        bottom: '##30BB0B',
       },
       top: TILES.leaves,
       side: TILES.leaves,
