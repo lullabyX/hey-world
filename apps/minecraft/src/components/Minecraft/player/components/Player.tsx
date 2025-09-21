@@ -35,7 +35,7 @@ const PlayerControls = () => {
     <group>
       <PerspectiveCamera
         ref={playerRef}
-        position={[32, 32, 32]}
+        position={[0, 64, 0]}
         near={0.1}
         far={100}
         fov={75}
@@ -48,7 +48,7 @@ const PlayerControls = () => {
         <cameraHelper args={[playerRef.current]} />
       )}
       {isPlayerBody && (
-        <mesh ref={playerBodyRef} position={[32, 32, 32]}>
+        <mesh ref={playerBodyRef} position={[0, 64, 0]}>
           <cylinderGeometry args={[playerRadius, playerRadius, playerHeight]} />
           <meshBasicMaterial color="white" wireframe />
         </mesh>
