@@ -38,12 +38,9 @@ import {
 } from '../hooks/useWorldChunk';
 import useWorldManager from '../hooks/useWorldManger';
 import { worldEdits } from '@/lib/store';
-import {
-  desertTreeNoise,
-  jungleTreeNoise,
-  tundraTreeNoise,
-} from '@/lib/constants';
 import { clampNoise } from '@/helpers/noise-clamp';
+import { BIOME_CONFIGS, BiomeType, getBiome } from '@/lib/biome';
+import { getFBMNoise2D } from '@/helpers/octave-noise';
 
 export type WorldChunkHandle = {
   meshRef: React.RefObject<InstancedMesh | null>;
@@ -139,7 +136,21 @@ const WorldChunk = ({
     worldData,
   } = useWorldManager();
 
-  const { scale, magnitude, offset, seed } = worldData;
+  const {
+    scale,
+    magnitude,
+    offset,
+    seed,
+    pvScale,
+    pvMagnitude,
+    pvOctaves,
+    erosionScale,
+    erosionStrength,
+    erosionOctaves,
+    seaLevel,
+    mountainCap,
+    warpStrength,
+  } = worldData;
 
   const resources = useMemo(() => getResourceEntries(), []);
   const resourceControlsSchema = useMemo(
@@ -190,23 +201,6 @@ const WorldChunk = ({
     collapsed: true,
   }) as Record<string, number>;
   const resourceControlsKey = JSON.stringify(resourceControls);
-
-  const treeControls = useControls(
-    'Trees',
-    {
-      biome: {
-        label: 'biome',
-        options: {
-          Meadow: 'meadow',
-          Jungle: 'jungle',
-          Tundra: 'tundra',
-          Desert: 'desert',
-        },
-        value: 'meadow',
-      },
-    },
-    { collapsed: false }
-  ) as { biome: 'meadow' | 'jungle' | 'tundra' | 'desert' };
 
   const setGeometryAttributes = useCallback(() => {
     if (!meshRef.current) return;
@@ -302,30 +296,17 @@ const WorldChunk = ({
     [xOffset, zOffset, setBlockOutsideChunkAt]
   );
 
-  const getTreeConfig = useCallback(() => {
-    switch (treeControls.biome) {
-      case 'jungle':
-        return jungleTreeNoise;
-      case 'tundra':
-        return tundraTreeNoise;
-      case 'desert':
-        return desertTreeNoise;
-      case 'meadow':
-      default:
-        return tundraTreeNoise;
-    }
-  }, [treeControls.biome]);
-
   const generateTreeCanopee = useCallback(
     (
       x: number,
       baseY: number,
       z: number,
       trunkHeight: number,
-      noise: number
+      noise: number,
+      biome: BiomeType
     ) => {
       // Compute canopy radius from noise within configured bounds
-      const cfg = getTreeConfig();
+      const cfg = BIOME_CONFIGS[biome].tree;
       const minRadius = cfg.radiusMin;
       const maxRadius = cfg.radiusMax;
       const radius = Math.round(clampNoise(noise, minRadius, maxRadius));
@@ -350,10 +331,10 @@ const WorldChunk = ({
 
             // Do not overwrite the trunk top block directly
             if (dx === 0 && dy === 0 && dz === 0) continue;
-            const block = getBlockAt(px, py, pz);
-            if (block && (block.type === 'wood' || block.type === 'leaves')) {
-              continue;
-            }
+            // const block = getBlockAt(px, py, pz);
+            // if (block && (block.type === 'wood' || block.type === 'leaves')) {
+            //   continue;
+            // }
 
             // Bounds check within this chunk
             if (px < 0 || px >= width) {
@@ -373,85 +354,318 @@ const WorldChunk = ({
         }
       }
     },
-    [width, height, getBlockAt, setBlockTypeAt, saveOutsideChunk, getTreeConfig]
+    [width, height, getBlockAt, setBlockTypeAt, saveOutsideChunk]
   );
 
   const generateTree = useCallback(
-    (x: number, y: number, z: number, noise: number) => {
-      const cfg = getTreeConfig();
-      const minH = cfg.heightMin;
-      const maxH = cfg.heightMax;
+    (x: number, y: number, z: number, noise: number, biome: BiomeType) => {
+      const treeConfig = BIOME_CONFIGS[biome].tree;
+      const minH = treeConfig.heightMin;
+      const maxH = treeConfig.heightMax;
       const desiredHeight = Math.floor(clampNoise(noise, minH, maxH));
       const trunkHeight = Math.max(1, Math.min(maxH, desiredHeight));
-      if (noise > cfg.thresholdMin && noise < cfg.thresholdMax) {
-        console.log('noise', trunkHeight);
+      if (noise > treeConfig.thresholdMin && noise < treeConfig.thresholdMax) {
         for (let i = 1; i < trunkHeight && y + i < height - 1; i++) {
-          setBlockTypeAt(x, y + i, z, 'wood');
+          setBlockTypeAt(x, y + i, z, treeConfig.trunk);
         }
 
-        generateTreeCanopee(x, y, z, trunkHeight, noise);
+        if (treeConfig.hasCanopee) {
+          generateTreeCanopee(x, y, z, trunkHeight, noise, biome);
+        }
       }
     },
-    [setBlockTypeAt, generateTreeCanopee, height, getTreeConfig]
+    [setBlockTypeAt, generateTreeCanopee, height]
   );
 
-  const generateTerrain = useCallback(
-    ({ rng }: { rng: RandomNumberGenerator }) => {
-      const simplexNoise = new SimplexNoise(rng);
+  // Utility: smoothstep for soft transitions
+  const smoothstep = (edge0: number, edge1: number, x: number) => {
+    const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
+  };
+
+  // Cubic Hermite spline utilities to shape base height from continentalness
+  type SplinePoint = { t: number; v: number; m: number };
+  const cubicHermite = (
+    p0: number,
+    m0: number,
+    p1: number,
+    m1: number,
+    t: number
+  ) => {
+    const t2 = t * t;
+    const t3 = t2 * t;
+    const h00 = 2 * t3 - 3 * t2 + 1;
+    const h10 = t3 - 2 * t2 + t;
+    const h01 = -2 * t3 + 3 * t2;
+    const h11 = t3 - t2;
+    return h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1;
+  };
+  const evalSpline = (x: number, pts: SplinePoint[]): number => {
+    const n = pts.length;
+    if (n === 0) return 0;
+    const first = pts[0]!;
+    const last = pts[n - 1]!;
+    if (x <= first.t) return first.v;
+    if (x >= last.t) return last.v;
+    for (let i = 0; i < n - 1; i++) {
+      const a = pts[i]!;
+      const b = pts[i + 1]!;
+      if (x >= a.t && x <= b.t) {
+        const span = b.t - a.t || 1;
+        const tt = (x - a.t) / span;
+        return cubicHermite(a.v, a.m * span, b.v, b.m * span, tt);
+      }
+    }
+    return last.v;
+  };
+
+  // Ridged FBM (Peaks & Valleys): returns ~[0,1]
+  const ridgedFBM2D = (
+    x: number,
+    y: number,
+    sn: SimplexNoise,
+    octaves: number
+  ): number => {
+    let sum = 0;
+    let frequency = 1;
+    let amplitude = 1;
+    let maxAmp = 0;
+    for (let i = 0; i < octaves; i++) {
+      const n = sn.noise(x * frequency, y * frequency);
+      const ridged = 1 - Math.abs(n); // peaks on ridges
+      sum += ridged * amplitude;
+      maxAmp += amplitude;
+      frequency *= 2;
+      amplitude *= 0.5;
+    }
+    if (maxAmp === 0) return 0;
+    return sum / maxAmp; // 0..1
+  };
+
+  const generateTerrain = useCallback(() => {
+    // Create dedicated noise instances per layer using seeded RNGs
+    const baseRng = new RandomNumberGenerator(seed + 101);
+    const ridgedRng = new RandomNumberGenerator(seed + 202);
+    const erosionRng = new RandomNumberGenerator(seed + 303);
+    const microRng = new RandomNumberGenerator(seed + 404);
+    const warpRng = new RandomNumberGenerator(seed + 505);
+    const treeRng = new RandomNumberGenerator(seed + 606);
+
+    const baseNoise = new SimplexNoise(baseRng);
+    const ridgedNoise = new SimplexNoise(ridgedRng);
+    const erosionNoise = new SimplexNoise(erosionRng);
+    const microNoise = new SimplexNoise(microRng);
+    const warpNoise = new SimplexNoise(warpRng);
+    const treeNoise = new SimplexNoise(treeRng);
+    const biomeNoise = new SimplexNoise(new RandomNumberGenerator(seed + 707));
+    // Shared helpers for two-pass terrain generation
+    const warpScale = scale * 2.5;
+    const warpStrengthClamped = Math.max(
+      0,
+      Math.min(warpStrength, scale * 0.6)
+    );
+    const warp = (gx: number, gz: number) => ({
+      wx: warpNoise.noise(gx / warpScale, gz / warpScale) * warpStrengthClamped,
+      wz:
+        warpNoise.noise((gx + 1000) / warpScale, (gz - 1000) / warpScale) *
+        warpStrengthClamped,
+    });
+
+    const sampleContinental = (gx: number, gz: number) => {
+      const { wx, wz } = warp(gx, gz);
+      return getFBMNoise2D({
+        x: (gx + wx) / scale,
+        y: (gz + wz) / scale,
+        simplexNoise: baseNoise,
+        octaves: 2,
+      });
+    };
+
+    const nStep = Math.max(8, Math.floor(scale * 0.15));
+
+    const heightFromNoises = (gx: number, gz: number) => {
+      const c0 = sampleContinental(gx, gz);
+      const c1 = sampleContinental(gx + nStep, gz);
+      const c2 = sampleContinental(gx - nStep, gz);
+      const c3 = sampleContinental(gx, gz + nStep);
+      const c4 = sampleContinental(gx, gz - nStep);
+      const continentalness = c0 * 0.6 + (c1 + c2 + c3 + c4) * 0.1;
+
+      const { wx, wz } = warp(gx, gz);
+      const ridged = ridgedFBM2D(
+        (gx + wx) / pvScale,
+        (gz + wz) / pvScale,
+        ridgedNoise,
+        pvOctaves
+      );
+
+      const erosionMask = getFBMNoise2D({
+        x: (gx + wx * 0.5) / erosionScale,
+        y: (gz + wz * 0.5) / erosionScale,
+        simplexNoise: erosionNoise,
+        octaves: erosionOctaves,
+        amplitude: 0.5,
+        offset: 0.5,
+      });
+
+      // Base height from continentalness using a Minecraft-like spline
+      const cont = Math.max(-1, Math.min(1, continentalness));
+      const baseSpline: SplinePoint[] = [
+        { t: -1.0, v: Math.max(0, seaLevel - 12), m: 0.0 },
+        { t: -0.35, v: seaLevel - 2, m: 0.5 },
+        { t: -0.05, v: seaLevel + 3, m: 0.6 },
+        { t: 0.25, v: seaLevel + 14, m: 0.8 },
+        { t: 0.55, v: seaLevel + 22, m: 1.2 },
+        { t: 1.0, v: Math.min(height - 1, mountainCap - 4), m: 0.0 },
+      ];
+      let baseHeight = evalSpline(cont, baseSpline);
+      const micro = getFBMNoise2D({
+        x: (gx + wx * 0.25) / (scale * 2),
+        y: (gz + wz * 0.25) / (scale * 2),
+        simplexNoise: microNoise,
+        octaves: 2,
+        amplitude: Math.max(0.5, magnitude * 3),
+      });
+
+      const inland = smoothstep(-0.2, 0.6, continentalness);
+      const pvContribution = (ridged - 0.5) * 2;
+      // Squash factor: flatten near sea level, emphasize peaks inland
+      const aboveSea = Math.max(0, baseHeight - seaLevel);
+      const squash = 0.55 + 0.45 * smoothstep(0, 20, aboveSea);
+      const erodedPv =
+        pvContribution * (1 - erosionStrength * erosionMask) * inland * squash;
+
+      // Vertical offset to nudge terrain up/down globally
+      baseHeight += offset * 16;
+      const hFloat = baseHeight + erodedPv * pvMagnitude + micro;
+      const h = Math.floor(Math.max(0, Math.min(height - 1, hFloat)));
+      return h;
+    };
+
+    // Pass 1: compute height map
+    const heightMap = new Int16Array(width * width);
+    for (let x = 0; x < width; x++) {
+      for (let z = 0; z < width; z++) {
+        const globalX = x + xOffset;
+        const globalZ = z + zOffset;
+        heightMap[x * width + z] = heightFromNoises(globalX, globalZ);
+      }
+    }
+
+    // Pass 2: slope limiting to prevent vertical jumps
+    const maxStep = 3;
+    const iterations = 2;
+    const smoothed = new Int16Array(heightMap);
+    for (let iter = 0; iter < iterations; iter++) {
       for (let x = 0; x < width; x++) {
         for (let z = 0; z < width; z++) {
-          const globalX = x + xOffset;
-          const globalZ = z + zOffset;
-          const value = simplexNoise.noise(globalX / scale, globalZ / scale);
-          const scaledValue = value * magnitude + offset;
-
-          let _height = Math.floor(height * scaledValue);
-
-          _height = Math.max(0, Math.min(height - 1, _height));
-
-          const cfg = getTreeConfig();
-          const treeNoiseValue = simplexNoise.noise(
-            globalX / cfg.scale,
-            globalZ / cfg.scale
-          );
-
-          const treeScaledNoiseValue = clampNoise(
-            treeNoiseValue * cfg.magnitude + cfg.offset
-          );
-          for (let y = 0; y < height; y++) {
-            loadBlocksFromOutsideChunk(x, y, z);
-
-            const block = getBlockAt(x, y, z);
-            const isResource = block?.isResource;
-            if (y === _height) {
-              setBlockTypeAt(x, y, z, 'grass');
-              generateTree(x, y, z, treeScaledNoiseValue);
-            } else if (y < _height && !isResource) {
-              setBlockTypeAt(x, y, z, 'dirt');
-            } else if (y > _height && isResource) {
-              setBlockTypeAt(x, y, z, 'empty');
+          const idx = x * width + z;
+          let h: number = smoothed[idx] ?? 0;
+          const neighbor = (nx: number, nz: number) => {
+            if (nx >= 0 && nx < width && nz >= 0 && nz < width) {
+              return smoothed[nx * width + nz] ?? 0;
             }
+            const gx = nx + xOffset;
+            const gz = nz + zOffset;
+            return heightFromNoises(gx, gz);
+          };
+          const n0 = neighbor(x - 1, z);
+          const n1 = neighbor(x + 1, z);
+          const n2 = neighbor(x, z - 1);
+          const n3 = neighbor(x, z + 1);
 
-            loadUserSave(x, y, z);
-          }
+          if (h > n0 + maxStep) h = n0 + maxStep;
+          if (h < n0 - maxStep) h = n0 - maxStep;
+          if (h > n1 + maxStep) h = n1 + maxStep;
+          if (h < n1 - maxStep) h = n1 - maxStep;
+          if (h > n2 + maxStep) h = n2 + maxStep;
+          if (h < n2 - maxStep) h = n2 - maxStep;
+          if (h > n3 + maxStep) h = n3 + maxStep;
+          if (h < n3 - maxStep) h = n3 - maxStep;
+          smoothed[idx] = Math.max(0, Math.min(height - 1, h));
         }
       }
-    },
-    [
-      width,
-      height,
-      scale,
-      magnitude,
-      offset,
-      xOffset,
-      zOffset,
-      getBlockAt,
-      setBlockTypeAt,
-      generateTree,
-      getTreeConfig,
-      loadUserSave,
-    ]
-  );
+    }
+
+    // Pass 3: fill blocks using smoothed height map
+    for (let x = 0; x < width; x++) {
+      for (let z = 0; z < width; z++) {
+        const globalX = x + xOffset;
+        const globalZ = z + zOffset;
+        const _height = smoothed[x * width + z] ?? 0;
+
+        // Biome selection and top block choice
+        const biomeValue = biomeNoise.noise(globalX / 250, globalZ / 250);
+        const biomeType: BiomeType = getBiome(biomeValue);
+        let topBlockType: BlockType = 'grass';
+        switch (biomeType) {
+          case 'jungle':
+            topBlockType = 'jungle_grass';
+            break;
+          case 'tundra':
+            topBlockType = 'snow';
+            break;
+          case 'desert':
+            topBlockType = 'sand';
+            break;
+          case 'meadow':
+          default:
+            topBlockType = 'grass';
+            break;
+        }
+
+        // Beaches near sea level override biome top block
+        const beachWidth = 2;
+        if (_height <= seaLevel + beachWidth && _height >= seaLevel - 2) {
+          topBlockType = 'sand';
+        }
+
+        // Snow caps at high altitude
+        const snowLevel = Math.max(seaLevel + 24, mountainCap - 8);
+        if (_height >= snowLevel) {
+          topBlockType = 'snow';
+        }
+
+        const treeNoiseValue = treeNoise.noise(globalX, globalZ);
+        const treeScaledNoiseValue = treeNoiseValue * 0.3 + 0.2;
+
+        for (let y = 0; y < height; y++) {
+          loadBlocksFromOutsideChunk(x, y, z);
+
+          const block = getBlockAt(x, y, z);
+          const isResource = block?.isResource;
+          if (y === _height) {
+            setBlockTypeAt(x, y, z, topBlockType);
+            if (y > seaLevel) {
+              generateTree(x, y, z, treeScaledNoiseValue, biomeType);
+            }
+          } else if (y < seaLevel && y > _height) {
+            setBlockTypeAt(x, y, z, 'water');
+          } else if (y < _height && y < 16 && !isResource) {
+            setBlockTypeAt(x, y, z, 'stone');
+          } else if (y < _height && !isResource) {
+            setBlockTypeAt(x, y, z, 'dirt');
+          } else if (y > _height && isResource) {
+            setBlockTypeAt(x, y, z, 'empty');
+          }
+
+          loadUserSave(x, y, z);
+        }
+      }
+    }
+  }, [
+    width,
+    height,
+    scale,
+    magnitude,
+    offset,
+    xOffset,
+    zOffset,
+    getBlockAt,
+    setBlockTypeAt,
+    generateTree,
+    loadUserSave,
+  ]);
 
   const generateResources = useCallback(
     ({ rng }: { rng: RandomNumberGenerator }) => {
@@ -802,7 +1016,7 @@ const WorldChunk = ({
       () => {
         initializeTerrain();
         generateResources({ rng });
-        generateTerrain({ rng });
+        generateTerrain();
         generateMesh();
         loadedRef.current = true;
       },

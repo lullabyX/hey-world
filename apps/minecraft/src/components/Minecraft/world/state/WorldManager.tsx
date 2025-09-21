@@ -39,6 +39,15 @@ type WorldManager = {
     magnitude: number;
     offset: number;
     seed: number;
+    pvScale: number;
+    pvMagnitude: number;
+    pvOctaves: number;
+    erosionScale: number;
+    erosionStrength: number;
+    erosionOctaves: number;
+    seaLevel: number;
+    mountainCap: number;
+    warpStrength: number;
   };
 };
 
@@ -60,33 +69,107 @@ export const WorldManagerProvider = ({
     magnitude,
     offset,
     seed,
+    pvScale,
+    pvMagnitude,
+    pvOctaves,
+    erosionScale,
+    erosionStrength,
+    erosionOctaves,
+    seaLevel,
+    mountainCap,
+    warpStrength,
     'Draw Distance': drawDistance,
   } = useControls(
     'Terrain',
     {
       'Draw Distance': {
-        value: 2,
+        value: 4,
         min: 0,
         max: 10,
         step: 1,
       },
       scale: {
-        value: 50,
+        value: 100,
         min: 20,
         max: 100,
         step: 1,
       },
       magnitude: {
-        value: 0.15,
+        value: 0.5,
         min: 0,
         max: 1,
         step: 0.01,
       },
       offset: {
-        value: 0.12,
+        value: 0.2,
         min: 0,
         max: 1,
         step: 0.01,
+      },
+      // Peaks & Valleys (ridged noise)
+      pvScale: {
+        label: 'pvScale',
+        value: 140,
+        min: 20,
+        max: 400,
+        step: 1,
+      },
+      pvMagnitude: {
+        label: 'pvMagnitude',
+        value: 10,
+        min: 0,
+        max: 32,
+        step: 1,
+      },
+      pvOctaves: {
+        label: 'pvOctaves',
+        value: 3,
+        min: 1,
+        max: 8,
+        step: 1,
+      },
+      // Erosion mask
+      erosionScale: {
+        label: 'erosionScale',
+        value: 220,
+        min: 20,
+        max: 600,
+        step: 1,
+      },
+      erosionStrength: {
+        label: 'erosionStrength',
+        value: 0.5,
+        min: 0,
+        max: 1,
+        step: 0.01,
+      },
+      erosionOctaves: {
+        label: 'erosionOctaves',
+        value: 2,
+        min: 1,
+        max: 8,
+        step: 1,
+      },
+      seaLevel: {
+        label: 'seaLevel',
+        value: 16,
+        min: 0,
+        max: 40,
+        step: 1,
+      },
+      mountainCap: {
+        label: 'mountainCap',
+        value: 64,
+        min: 24,
+        max: 96,
+        step: 1,
+      },
+      warpStrength: {
+        label: 'warpStrength',
+        value: 10,
+        min: 0,
+        max: 64,
+        step: 1,
       },
       seed: {
         value: 123456789,
@@ -104,7 +187,18 @@ export const WorldManagerProvider = ({
   const blockOutsideChunk = useMemo(
     () => new Map<string, BlockType>(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scale, magnitude, offset, seed]
+    [
+      scale,
+      magnitude,
+      offset,
+      seed,
+      pvScale,
+      pvMagnitude,
+      pvOctaves,
+      erosionScale,
+      erosionStrength,
+      erosionOctaves,
+    ]
   );
 
   const keyForGlobalPosition = useCallback(
@@ -260,6 +354,15 @@ export const WorldManagerProvider = ({
         magnitude,
         offset,
         seed,
+        pvScale,
+        pvMagnitude,
+        pvOctaves,
+        erosionScale,
+        erosionStrength,
+        erosionOctaves,
+        seaLevel,
+        mountainCap,
+        warpStrength,
       },
     }),
     [
@@ -279,6 +382,15 @@ export const WorldManagerProvider = ({
       magnitude,
       offset,
       seed,
+      pvScale,
+      pvMagnitude,
+      pvOctaves,
+      erosionScale,
+      erosionStrength,
+      erosionOctaves,
+      seaLevel,
+      mountainCap,
+      warpStrength,
     ]
   );
 

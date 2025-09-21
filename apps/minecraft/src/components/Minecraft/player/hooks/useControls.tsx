@@ -177,7 +177,7 @@ const useControl = ({
           }
           break;
         case 'r':
-          playerRef.current?.position.set(32, 32, 32);
+          playerRef.current?.position.set(0, 64, 0);
           playerVelocityRef.current = new Vector3(0, 0, 0);
           break;
       }

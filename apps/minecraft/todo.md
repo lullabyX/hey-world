@@ -1,0 +1,4 @@
+- blocks - jungle leaves, jungle wood, jungle grass, cactus, snow
+- Biome types - jungle, tundra, meadow, desert
+- Generate different biomes and adjust noise function
+- try to adjust scale, magnitude and offset based on different biomes.
