@@ -27,6 +27,8 @@ export const TILES = {
   cactusTop: 69,
   cactusSide: 70,
 
+  water: 12 * 16 + 15,
+
   snow: 66,
 
   // foliage
@@ -241,6 +243,15 @@ export const BLOCK_CONFIGS = {
     resource: {
       scale: { x: 30, y: 30, z: 30 },
       scarcity: 0.88,
+    },
+  },
+  water: {
+    type: 'water' as const,
+    color: '#3AA2FF',
+    textureTiles: {
+      top: TILES.water,
+      side: TILES.water,
+      bottom: TILES.water,
     },
   },
 } as const satisfies Record<string, BlockDefinition>;

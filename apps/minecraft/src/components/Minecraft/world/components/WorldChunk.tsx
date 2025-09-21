@@ -331,10 +331,10 @@ const WorldChunk = ({
 
             // Do not overwrite the trunk top block directly
             if (dx === 0 && dy === 0 && dz === 0) continue;
-            const block = getBlockAt(px, py, pz);
-            if (block && (block.type === 'wood' || block.type === 'leaves')) {
-              continue;
-            }
+            // const block = getBlockAt(px, py, pz);
+            // if (block && (block.type === 'wood' || block.type === 'leaves')) {
+            //   continue;
+            // }
 
             // Bounds check within this chunk
             if (px < 0 || px >= width) {
@@ -366,7 +366,7 @@ const WorldChunk = ({
       const trunkHeight = Math.max(1, Math.min(maxH, desiredHeight));
       if (noise > treeConfig.thresholdMin && noise < treeConfig.thresholdMax) {
         for (let i = 1; i < trunkHeight && y + i < height - 1; i++) {
-          setBlockTypeAt(x, y + i, z, 'wood');
+          setBlockTypeAt(x, y + i, z, treeConfig.trunk);
         }
 
         if (treeConfig.hasCanopee) {
@@ -626,13 +626,8 @@ const WorldChunk = ({
           topBlockType = 'snow';
         }
 
-        const treeConfig = BIOME_CONFIGS[biomeType].tree;
-        const treeNoiseValue = treeNoise.noise(
-          globalX * treeConfig.scale,
-          globalZ * treeConfig.scale
-        );
-        const treeScaledNoiseValue =
-          treeNoiseValue * treeConfig.magnitude + treeConfig.offset;
+        const treeNoiseValue = treeNoise.noise(globalX, globalZ);
+        const treeScaledNoiseValue = treeNoiseValue * 0.3 + 0.2;
 
         for (let y = 0; y < height; y++) {
           loadBlocksFromOutsideChunk(x, y, z);
@@ -641,7 +636,11 @@ const WorldChunk = ({
           const isResource = block?.isResource;
           if (y === _height) {
             setBlockTypeAt(x, y, z, topBlockType);
-            generateTree(x, y, z, treeScaledNoiseValue, biomeType);
+            if (y > seaLevel) {
+              generateTree(x, y, z, treeScaledNoiseValue, biomeType);
+            }
+          } else if (y < seaLevel && y > _height) {
+            setBlockTypeAt(x, y, z, 'water');
           } else if (y < _height && y < 16 && !isResource) {
             setBlockTypeAt(x, y, z, 'stone');
           } else if (y < _height && !isResource) {
