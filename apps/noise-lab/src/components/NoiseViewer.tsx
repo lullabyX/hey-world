@@ -913,7 +913,7 @@ export default function NoiseViewer() {
       </div>
 
       <div className="grid gap-2">
-        <Label>pvScale ({pvScale})</Label>
+        <Label>Peaks & Valleys Scale ({pvScale})</Label>
         <Slider
           value={[pvScale]}
           min={20}
@@ -924,7 +924,7 @@ export default function NoiseViewer() {
       </div>
 
       <div className="grid gap-2">
-        <Label>pvOctaves ({pvOctaves})</Label>
+        <Label>Peaks & Valleys Octaves ({pvOctaves})</Label>
         <Slider
           value={[pvOctaves]}
           min={1}
@@ -935,7 +935,7 @@ export default function NoiseViewer() {
       </div>
 
       <div className="grid gap-2">
-        <Label>erosionScale ({erosionScale})</Label>
+        <Label>Erosion Scale ({erosionScale})</Label>
         <Slider
           value={[erosionScale]}
           min={20}
@@ -946,7 +946,7 @@ export default function NoiseViewer() {
       </div>
 
       <div className="grid gap-2">
-        <Label>erosionOctaves ({erosionOctaves})</Label>
+        <Label>Erosion Octaves ({erosionOctaves})</Label>
         <Slider
           value={[erosionOctaves]}
           min={1}
@@ -957,7 +957,7 @@ export default function NoiseViewer() {
       </div>
 
       <div className="grid gap-2">
-        <Label>erosionStrength ({erosionStrength.toFixed(2)})</Label>
+        <Label>Erosion Strength ({erosionStrength.toFixed(2)})</Label>
         <Slider
           value={[erosionStrength]}
           min={0}
@@ -968,7 +968,7 @@ export default function NoiseViewer() {
       </div>
 
       <div className="grid gap-2">
-        <Label>warpStrength ({warpStrength})</Label>
+        <Label>Warp Strength ({warpStrength})</Label>
         <Slider
           value={[warpStrength]}
           min={0}
