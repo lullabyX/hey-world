@@ -29,8 +29,8 @@ type RenderMode =
   | 'finalHeight'
   | 'biome';
 
-const WIDTH = 512;
-const HEIGHT = 256;
+const WIDTH = 1024;
+const HEIGHT = 512;
 
 function useLocalStorageNumber(key: string, initial: number) {
   const [value, setValue] = useState<number>(() => {
@@ -1201,6 +1201,19 @@ export default function NoiseViewer() {
     </div>
   );
 
+  const [panelHeight, setPanelHeight] = useState<number>(HEIGHT);
+  useEffect(() => {
+    const update = () => {
+      const el = canvasRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setPanelHeight(Math.max(HEIGHT, Math.floor(rect.height)));
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_320px]">
       <div className="relative overflow-hidden rounded border border-border">
@@ -1208,9 +1221,12 @@ export default function NoiseViewer() {
       </div>
 
       <div className="hidden md:block">
-        <div className="sticky top-4 rounded border bg-card text-card-foreground shadow-sm">
+        <div
+          className="sticky top-4 overflow-hidden rounded border bg-card text-card-foreground shadow-sm"
+          style={{ height: panelHeight }}
+        >
           <div className="border-b p-3 font-semibold">Controls</div>
-          {controls}
+          <div className="h-full overflow-y-auto">{controls}</div>
         </div>
       </div>
 

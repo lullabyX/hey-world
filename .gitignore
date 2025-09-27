@@ -49,3 +49,6 @@ next-env.d.ts
 
 # private data
 .private
+
+# workspace
+*.code-workspace
