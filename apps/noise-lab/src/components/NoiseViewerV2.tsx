@@ -340,12 +340,10 @@ export default function NoiseViewer() {
 
     // Precompute 5x5 parabolic kernel weights
     const kernel: number[] = [];
-    let kernelSum = 0;
     for (let dz = -2; dz <= 2; dz++) {
       for (let dx = -2; dx <= 2; dx++) {
         const w = 10 / Math.sqrt(dx * dx + dz * dz + 0.2);
         kernel.push(w);
-        kernelSum += w;
       }
     }
 
@@ -631,14 +629,6 @@ export default function NoiseViewer() {
           octaves: erosionOctaves,
           amplitude: 0.5,
           offset: 0.5,
-        });
-
-        const micro = getFBMNoise2D({
-          x: (gx + wx * 0.25) / (scale * 2),
-          y: (gz + wz * 0.25) / (scale * 2),
-          simplexNoise: noises.microNoise,
-          octaves: 2,
-          amplitude: Math.max(0.5, magnitude * 3),
         });
 
         // Temperature & humidity (0..1)
