@@ -5,13 +5,14 @@ import {
   loadDeepslateWorldFromObjectAsync,
   sampleDensity,
 } from './deepslateAdapter';
+import { Input, Label, Slider, Button } from '@hey-world/ui';
 
 type DeepslateWorld = Awaited<
   ReturnType<typeof loadDeepslateWorldFromObjectAsync>
 >;
 
-const WIDTH = 512;
-const HEIGHT = 256;
+const WIDTH = 1024;
+const HEIGHT = 512;
 
 export default function DeepslateTerrainViewer() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -200,40 +201,46 @@ export default function DeepslateTerrainViewer() {
       <div className="hidden md:block">
         <div className="sticky top-4 rounded border bg-card p-3 text-card-foreground shadow-sm">
           <div className="mb-2 font-semibold">Deepslate Terrain</div>
-          <div className="grid gap-2">
-            <label className="text-sm">Seed</label>
-            <input
-              className="rounded border px-2 py-1"
-              value={String(seed)}
-              onChange={(e) => setSeed(BigInt(e.target.value || '0'))}
-            />
-            <label className="text-sm">Min Y ({minY})</label>
-            <input
-              type="range"
-              min={-128}
-              max={0}
-              step={1}
-              value={minY}
-              onChange={(e) => setMinY(Number(e.target.value))}
-            />
-            <label className="text-sm">Max Y ({maxY})</label>
-            <input
-              type="range"
-              min={128}
-              max={384}
-              step={1}
-              value={maxY}
-              onChange={(e) => setMaxY(Number(e.target.value))}
-            />
-            <label className="text-sm">Y Step ({yStep})</label>
-            <input
-              type="range"
-              min={1}
-              max={16}
-              step={1}
-              value={yStep}
-              onChange={(e) => setYStep(Number(e.target.value))}
-            />
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="seed">Seed</Label>
+              <Input
+                id="seed"
+                type="number"
+                value={String(seed)}
+                onChange={(e) => setSeed(BigInt(e.target.value || '0'))}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Min Y ({minY})</Label>
+              <Slider
+                value={[minY]}
+                min={-128}
+                max={0}
+                step={1}
+                onValueChange={([v = minY]) => setMinY(v)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Max Y ({maxY})</Label>
+              <Slider
+                value={[maxY]}
+                min={128}
+                max={384}
+                step={1}
+                onValueChange={([v = maxY]) => setMaxY(v)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Y Step ({yStep})</Label>
+              <Slider
+                value={[yStep]}
+                min={1}
+                max={16}
+                step={1}
+                onValueChange={([v = yStep]) => setYStep(v)}
+              />
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -242,21 +249,25 @@ export default function DeepslateTerrainViewer() {
               />
               finalDensity value debug
             </label>
-            <label className="text-sm">Zoom ({zoom.toFixed(2)}x)</label>
-            <input
-              type="range"
-              min={0.25}
-              max={8}
-              step={0.05}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-            />
-            <button
-              className="rounded border px-2 py-1"
-              onClick={() => setPan({ x: 0, y: 0 })}
-            >
-              Reset Pan
-            </button>
+            <div className="grid gap-2">
+              <Label>Zoom ({zoom.toFixed(2)}x)</Label>
+              <Slider
+                value={[zoom]}
+                min={0.25}
+                max={8}
+                step={0.05}
+                onValueChange={([v = zoom]) => setZoom(v)}
+              />
+            </div>
+            <div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setPan({ x: 0, y: 0 })}
+              >
+                Reset Pan
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -1193,7 +1193,11 @@ export default function NoiseViewer() {
       <div className="grid gap-2">
         <Label>Pan</Label>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setPan({ x: 0, y: 0 })}>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setPan({ x: 0, y: 0 })}
+          >
             Reset
           </Button>
         </div>
@@ -1226,7 +1230,7 @@ export default function NoiseViewer() {
           style={{ height: panelHeight }}
         >
           <div className="border-b p-3 font-semibold">Controls</div>
-          <div className="h-full overflow-y-auto">{controls}</div>
+          <div className="h-full overflow-y-auto pb-12">{controls}</div>
         </div>
       </div>
 

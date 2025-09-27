@@ -5,6 +5,7 @@ import { loadDeepslateWorldFromObjectAsync } from './deepslateAdapter';
 import { Identifier, Climate, MultiNoiseBiomeSource } from 'deepslate';
 import overworldParamList from '../data/worldgen/multi_noise_biome_source_parameter_list/overworld.json';
 import biomeColors from '../data/biomeColors.json';
+import { Input, Label, Slider, Button } from '@hey-world/ui';
 
 function normalizeBiomeColors(
   raw: Record<string, number[]>
@@ -24,8 +25,8 @@ const BIOME_COLORS = normalizeBiomeColors(
   biomeColors as Record<string, number[]>
 );
 
-const WIDTH = 512;
-const HEIGHT = 256;
+const WIDTH = 1024;
+const HEIGHT = 512;
 
 function rgb(r: number, g: number, b: number) {
   return [r, g, b] as const;
@@ -379,7 +380,7 @@ export default function DeepslateBiomeViewer() {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_320px]">
       <div className="relative overflow-hidden rounded border border-border">
-        <canvas ref={canvasRef} className="h-auto w-full max-w-full" />
+        <canvas ref={canvasRef} className="w_full h-auto max-w-full" />
         {!world && !error && (
           <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
             Loading mcmeta registries…
@@ -394,28 +395,35 @@ export default function DeepslateBiomeViewer() {
       <div className="hidden md:block">
         <div className="sticky top-4 rounded border bg-card p-3 text-card-foreground shadow-sm">
           <div className="mb-2 font-semibold">Deepslate Biomes (vanilla)</div>
-          <div className="grid gap-2">
-            <label className="text-sm">Seed</label>
-            <input
-              className="rounded border px-2 py-1"
-              value={String(seed)}
-              onChange={(e) => setSeed(BigInt(e.target.value || '0'))}
-            />
-            <label className="text-sm">Zoom ({zoom.toFixed(2)}x)</label>
-            <input
-              type="range"
-              min={0.25}
-              max={8}
-              step={0.05}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-            />
-            <button
-              className="rounded border px-2 py-1"
-              onClick={() => setPan({ x: 0, y: 0 })}
-            >
-              Reset Pan
-            </button>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="seed">Seed</Label>
+              <Input
+                id="seed"
+                type="number"
+                value={String(seed)}
+                onChange={(e) => setSeed(BigInt(e.target.value || '0'))}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Zoom ({zoom.toFixed(2)}x)</Label>
+              <Slider
+                value={[zoom]}
+                min={0.25}
+                max={8}
+                step={0.05}
+                onValueChange={([v = zoom]) => setZoom(v)}
+              />
+            </div>
+            <div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setPan({ x: 0, y: 0 })}
+              >
+                Reset Pan
+              </Button>
+            </div>
           </div>
         </div>
       </div>

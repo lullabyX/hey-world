@@ -12,9 +12,20 @@ import {
 import { MultiNoiseBiomeSource } from 'deepslate';
 import overworldParamList from '../data/worldgen/multi_noise_biome_source_parameter_list/overworld.json';
 import biomeColors from '../data/biomeColors.json';
+import {
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Slider,
+  Button,
+} from '@hey-world/ui';
 
-const WIDTH = 512;
-const HEIGHT = 256;
+const WIDTH = 1024;
+const HEIGHT = 512;
 
 function normalizeBiomeColors(raw: Record<string, number[]>) {
   const out: Record<string, readonly [number, number, number]> = {};
@@ -73,7 +84,6 @@ export default function DeepslateViewer() {
       setError(null);
       setWorld(null);
       try {
-        // fetch overworld noise_settings from mcmeta; if missing, viewer will still render climate/biome if registries exist
         const settingsRes = await fetch(
           '/api/mcmeta/noise_settings?id=overworld&source=github',
           { cache: 'no-store' }
@@ -339,91 +349,110 @@ export default function DeepslateViewer() {
           </div>
         )}
       </div>
-      <div className="hidden md:block">
+      <div className="hidden h-full md:block">
         <div
-          className="sticky top-4 overflow-hidden rounded border bg-card text-card-foreground shadow-sm"
+          className="sticky top-4 h-full overflow-hidden rounded border bg-card text-card-foreground shadow-sm"
           style={{ height: HEIGHT }}
         >
           <div className="border-b p-3 font-semibold">Deepslate Viewer</div>
-          <div className="grid h-full gap-2 overflow-y-auto p-3">
-            <label className="text-sm">Seed</label>
-            <input
-              className="rounded border px-2 py-1"
-              value={String(seed)}
-              onChange={(e) => setSeed(BigInt(e.target.value || '0'))}
-            />
-            <label className="text-sm">Mode</label>
-            <select
-              className="rounded border px-2 py-1"
-              value={mode}
-              onChange={(e) => setMode(e.target.value as Mode)}
-            >
-              <option value="continents">continents</option>
-              <option value="temperature">temperature</option>
-              <option value="climate">climate (avg)</option>
-              <option value="biome">biome (deepslate)</option>
-              <option value="finalDensity">finalDensity (y-controlled)</option>
-              <option value="terrain">terrain (heightmap)</option>
-            </select>
+          <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="seed">Seed</Label>
+              <Input
+                id="seed"
+                type="number"
+                value={String(seed)}
+                onChange={(e) => setSeed(BigInt(e.target.value || '0'))}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Mode</Label>
+              <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="continents">continents</SelectItem>
+                  <SelectItem value="temperature">temperature</SelectItem>
+                  <SelectItem value="climate">climate (avg)</SelectItem>
+                  <SelectItem value="biome">biome (deepslate)</SelectItem>
+                  <SelectItem value="finalDensity">
+                    finalDensity (y-controlled)
+                  </SelectItem>
+                  <SelectItem value="terrain">terrain (heightmap)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {mode === 'finalDensity' && (
-              <>
-                <label className="text-sm">Y ({yLevel})</label>
-                <input
-                  type="range"
+              <div className="flex flex-col gap-2">
+                <Label>Y ({yLevel})</Label>
+                <Slider
+                  value={[yLevel]}
                   min={-64}
                   max={256}
                   step={1}
-                  value={yLevel}
-                  onChange={(e) => setYLevel(Number(e.target.value))}
+                  onValueChange={([v = yLevel]) => setYLevel(v)}
                 />
-              </>
+              </div>
             )}
+
             {mode === 'terrain' && (
               <>
-                <label className="text-sm">Min Y ({minY})</label>
-                <input
-                  type="range"
-                  min={-128}
-                  max={0}
-                  step={1}
-                  value={minY}
-                  onChange={(e) => setMinY(Number(e.target.value))}
-                />
-                <label className="text-sm">Max Y ({maxY})</label>
-                <input
-                  type="range"
-                  min={128}
-                  max={384}
-                  step={1}
-                  value={maxY}
-                  onChange={(e) => setMaxY(Number(e.target.value))}
-                />
-                <label className="text-sm">Y Step ({yStep})</label>
-                <input
-                  type="range"
-                  min={1}
-                  max={16}
-                  step={1}
-                  value={yStep}
-                  onChange={(e) => setYStep(Number(e.target.value))}
-                />
+                <div className="flex flex-col gap-2">
+                  <Label>Min Y ({minY})</Label>
+                  <Slider
+                    value={[minY]}
+                    min={-128}
+                    max={0}
+                    step={1}
+                    onValueChange={([v = minY]) => setMinY(v)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Max Y ({maxY})</Label>
+                  <Slider
+                    value={[maxY]}
+                    min={128}
+                    max={384}
+                    step={1}
+                    onValueChange={([v = maxY]) => setMaxY(v)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Y Step ({yStep})</Label>
+                  <Slider
+                    value={[yStep]}
+                    min={1}
+                    max={16}
+                    step={1}
+                    onValueChange={([v = yStep]) => setYStep(v)}
+                  />
+                </div>
               </>
             )}
-            <label className="text-sm">Zoom ({zoom.toFixed(2)}x)</label>
-            <input
-              type="range"
-              min={0.25}
-              max={8}
-              step={0.05}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-            />
-            <button
-              className="rounded border px-2 py-1"
-              onClick={() => setPan({ x: 0, y: 0 })}
-            >
-              Reset Pan
-            </button>
+
+            <div className="flex flex-col gap-2">
+              <Label>Zoom ({zoom.toFixed(2)}x)</Label>
+              <Slider
+                value={[zoom]}
+                min={0.25}
+                max={8}
+                step={0.05}
+                onValueChange={([v = zoom]) => setZoom(v)}
+              />
+            </div>
+
+            <div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setPan({ x: 0, y: 0 })}
+              >
+                Reset Pan
+              </Button>
+            </div>
           </div>
         </div>
       </div>
