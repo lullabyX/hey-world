@@ -169,9 +169,9 @@ export default function DeepslateViewer() {
       );
 
       if (dragging) {
-        // Accumulate movement and update pan at most once per frame
-        pendingMoveRef.current.dx += e.movementX;
-        pendingMoveRef.current.dy += e.movementY;
+        // Accumulate movement (convert CSS px to canvas px) and update pan at most once per frame
+        pendingMoveRef.current.dx += e.movementX * scaleX;
+        pendingMoveRef.current.dy += e.movementY * scaleY;
         if (rafRef.current === null) {
           rafRef.current = requestAnimationFrame(() => {
             const { dx, dy } = pendingMoveRef.current;
