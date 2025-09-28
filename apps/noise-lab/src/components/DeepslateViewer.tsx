@@ -73,7 +73,25 @@ export default function DeepslateViewer() {
   const [minY, setMinY] = useState(-64);
   const [maxY, setMaxY] = useState(320);
   const [yStep, setYStep] = useState(4);
+  const [biomeAtSurface, setBiomeAtSurface] = useState(false);
+  const [showOceanMask, setShowOceanMask] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hoverInfo, setHoverInfo] = useState<{
+    x: number; // css px relative to canvas
+    y: number; // css px relative to canvas
+    biomeKey: string;
+  } | null>(null);
+
+  // Keep a reference to the last computed height grid so hover sampling can reuse it
+  const heightGridRef = useRef<{
+    heights: Float32Array;
+    gridW: number;
+    gridH: number;
+    step: number;
+  } | null>(null);
+  // Throttle pan updates to animation frames for smoother dragging
+  const rafRef = useRef<number | null>(null);
+  const pendingMoveRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
 
   const [world, setWorld] = useState<ReturnType<
     typeof loadDeepslateWorldFromObject
@@ -133,13 +151,103 @@ export default function DeepslateViewer() {
     const onPointerLeave = () => {
       dragging = false;
       canvas.style.cursor = 'grab';
+      setHoverInfo(null);
     };
     const onPointerMove = (e: PointerEvent) => {
-      if (!dragging) return;
-      setPan((prev) => ({
-        x: prev.x - e.movementX / zoom,
-        y: prev.y - e.movementY / zoom,
-      }));
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const cssX = e.clientX - rect.left;
+      const cssY = e.clientY - rect.top;
+      const ix = Math.max(
+        0,
+        Math.min(canvas.width - 1, Math.floor(cssX * scaleX))
+      );
+      const iy = Math.max(
+        0,
+        Math.min(canvas.height - 1, Math.floor(cssY * scaleY))
+      );
+
+      if (dragging) {
+        // Accumulate movement and update pan at most once per frame
+        pendingMoveRef.current.dx += e.movementX;
+        pendingMoveRef.current.dy += e.movementY;
+        if (rafRef.current === null) {
+          rafRef.current = requestAnimationFrame(() => {
+            const { dx, dy } = pendingMoveRef.current;
+            pendingMoveRef.current = { dx: 0, dy: 0 };
+            setPan((prev) => ({
+              x: prev.x - dx / zoom,
+              y: prev.y - dy / zoom,
+            }));
+            rafRef.current = null;
+          });
+        }
+        setHoverInfo(null);
+        return;
+      }
+
+      // Hover biome probe in biome mode
+      if (mode === 'biome' && world) {
+        const gx = pan.x + (ix - WIDTH / 2) / zoom + WIDTH / 2;
+        const gz = pan.y + (iy - HEIGHT / 2) / zoom + HEIGHT / 2;
+        const quartX = Math.floor(gx) >> 2;
+        const quartZ = Math.floor(gz) >> 2;
+        let quartY = 16;
+
+        if (biomeAtSurface) {
+          const grid = heightGridRef.current;
+          if (grid) {
+            const gyf = iy / grid.step;
+            const gz0 = Math.floor(gyf);
+            const gz1 = Math.min(grid.gridH - 1, gz0 + 1);
+            const tz = Math.min(1, Math.max(0, gyf - gz0));
+            const gxf = ix / grid.step;
+            const gx0 = Math.floor(gxf);
+            const gx1 = Math.min(grid.gridW - 1, gx0 + 1);
+            const tx = Math.min(1, Math.max(0, gxf - gx0));
+            const i00 = gz0 * grid.gridW + gx0;
+            const i10 = gz0 * grid.gridW + gx1;
+            const i01 = gz1 * grid.gridW + gx0;
+            const i11 = gz1 * grid.gridW + gx1;
+            const h00 = grid.heights[i00] ?? minY;
+            const h10 = grid.heights[i10] ?? h00;
+            const h01 = grid.heights[i01] ?? h00;
+            const h11 = grid.heights[i11] ?? h10;
+            const h0 = h00 + (h10 - h00) * tx;
+            const h1 = h01 + (h11 - h01) * tx;
+            const h = h0 + (h1 - h0) * tz;
+            quartY = Math.floor(h) >> 2;
+          } else {
+            // Fallback: quick scan at this point
+            let surface = minY;
+            for (let y = maxY; y >= minY; y -= yStep) {
+              const d = sampleDensity(
+                world.state,
+                Math.floor(gx),
+                Math.floor(y),
+                Math.floor(gz)
+              );
+              if (d > 0) {
+                surface = y;
+                break;
+              }
+            }
+            quartY = Math.floor(surface) >> 2;
+          }
+        }
+
+        const id = biomeSource.getBiome(
+          quartX,
+          quartY,
+          quartZ,
+          world.state.sampler
+        );
+        const key = id.toString();
+        setHoverInfo({ x: cssX, y: cssY, biomeKey: key });
+      } else {
+        setHoverInfo(null);
+      }
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -175,8 +283,23 @@ export default function DeepslateViewer() {
       canvas.removeEventListener('pointerleave', onPointerLeave);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('wheel', onWheel as EventListener);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
-  }, [zoom]);
+  }, [
+    zoom,
+    mode,
+    world,
+    pan.x,
+    pan.y,
+    biomeAtSurface,
+    biomeSource,
+    minY,
+    maxY,
+    yStep,
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -189,13 +312,24 @@ export default function DeepslateViewer() {
     const imageData = ctx.createImageData(WIDTH, HEIGHT);
     const data = imageData.data;
 
-    if (mode === 'terrain') {
-      const STEP = 8;
-      const gridW = Math.ceil(WIDTH / STEP) + 1;
-      const gridH = Math.ceil(HEIGHT / STEP) + 1;
-      const heights = new Float32Array(gridW * gridH);
-      const idxGrid = (gxIdx: number, gzIdx: number) => gzIdx * gridW + gxIdx;
+    // Helper: determine if a biome id is an ocean variant
+    const isOceanBiome = (id: string) => {
+      const n = id.split(':').pop() ?? id;
+      return n.includes('ocean');
+    };
 
+    // Optional: precompute a height grid to reuse for terrain mode or biome-at-surface
+    const NEED_HEIGHTS =
+      mode === 'terrain' || (mode === 'biome' && biomeAtSurface);
+    const STEP = 8;
+    const gridW = Math.ceil(WIDTH / STEP) + 1;
+    const gridH = Math.ceil(HEIGHT / STEP) + 1;
+    const idxGrid = (gxIdx: number, gzIdx: number) => gzIdx * gridW + gxIdx;
+    let heights: Float32Array | null = null;
+    // reset ref by default; it will be filled when computed
+    heightGridRef.current = null;
+    if (NEED_HEIGHTS) {
+      heights = new Float32Array(gridW * gridH);
       for (let gzIdx = 0; gzIdx < gridH; gzIdx++) {
         const py = Math.min(HEIGHT - 1, gzIdx * STEP);
         const gz = pan.y + (py - HEIGHT / 2) / zoom + HEIGHT / 2;
@@ -232,7 +366,13 @@ export default function DeepslateViewer() {
           heights[idxGrid(gxIdx, gzIdx)] = surface;
         }
       }
+    }
+    if (heights) {
+      heightGridRef.current = { heights, gridW, gridH, step: STEP };
+    }
 
+    // Terrain rendering using the precomputed height grid
+    if (mode === 'terrain' && heights) {
       for (let iy = 0; iy < HEIGHT; iy++) {
         const gy = iy / STEP;
         const gz0 = Math.floor(gy);
@@ -283,14 +423,48 @@ export default function DeepslateViewer() {
         if (mode === 'biome') {
           const quartX = Math.floor(gx) >> 2;
           const quartZ = Math.floor(gz) >> 2;
+
+          // If enabled, sample biome at surface Y instead of fixed 16
+          let quartY = 16;
+          if (biomeAtSurface && heights) {
+            const gy = iy / STEP;
+            const gz0 = Math.floor(gy);
+            const gz1 = Math.min(gridH - 1, gz0 + 1);
+            const tz = Math.min(1, Math.max(0, gy - gz0));
+            const gxq = ix / STEP;
+            const gx0 = Math.floor(gxq);
+            const gx1 = Math.min(gridW - 1, gx0 + 1);
+            const tx = Math.min(1, Math.max(0, gxq - gx0));
+
+            const i00 = gz0 * gridW + gx0;
+            const i10 = gz0 * gridW + gx1;
+            const i01 = gz1 * gridW + gx0;
+            const i11 = gz1 * gridW + gx1;
+            const h00 = heights[i00] ?? minY;
+            const h10 = heights[i10] ?? h00;
+            const h01 = heights[i01] ?? h00;
+            const h11 = heights[i11] ?? h10;
+            const h0 = h00 + (h10 - h00) * tx;
+            const h1 = h01 + (h11 - h01) * tx;
+            const h = h0 + (h1 - h0) * tz;
+            quartY = Math.floor(h) >> 2;
+          }
+
           const id = biomeSource.getBiome(
             quartX,
-            16,
+            quartY,
             quartZ,
             world.state.sampler
           );
           const key = id.toString();
-          const [r, g, b] = BIOME_COLORS[key] ?? hashColor(key);
+          let [r, g, b] = BIOME_COLORS[key] ?? hashColor(key);
+
+          if (showOceanMask && isOceanBiome(key)) {
+            r = Math.floor(r * 0.5);
+            g = Math.floor(g * 0.6);
+            b = Math.min(255, Math.floor(b * 0.6 + 100));
+          }
+
           data[idx + 0] = r;
           data[idx + 1] = g;
           data[idx + 2] = b;
@@ -332,12 +506,43 @@ export default function DeepslateViewer() {
     }
 
     ctx.putImageData(imageData, 0, 0);
-  }, [world, mode, pan.x, pan.y, zoom, yLevel, minY, maxY, yStep, biomeSource]);
+  }, [
+    world,
+    mode,
+    pan.x,
+    pan.y,
+    zoom,
+    yLevel,
+    minY,
+    maxY,
+    yStep,
+    biomeAtSurface,
+    showOceanMask,
+    biomeSource,
+  ]);
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_320px]">
       <div className="relative overflow-hidden rounded border border-border">
         <canvas ref={canvasRef} className="h-auto w-full max-w-full" />
+        {mode === 'biome' && hoverInfo && (
+          <div
+            className="pointer-events-none absolute"
+            style={{
+              left: hoverInfo.x + 8,
+              top: hoverInfo.y + 8,
+              padding: '2px 6px',
+              borderRadius: 4,
+              background: 'rgba(0,0,0,0.7)',
+              color: 'white',
+              fontSize: 12,
+              maxWidth: 320,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {hoverInfo.biomeKey}
+          </div>
+        )}
         {!world && !error && (
           <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
             Loading mcmeta registries…
@@ -428,6 +633,31 @@ export default function DeepslateViewer() {
                     max={16}
                     step={1}
                     onValueChange={([v = yStep]) => setYStep(v)}
+                  />
+                </div>
+              </>
+            )}
+
+            {mode === 'biome' && (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="biome-surface-toggle">
+                    Biomes at surface
+                  </Label>
+                  <input
+                    id="biome-surface-toggle"
+                    type="checkbox"
+                    checked={biomeAtSurface}
+                    onChange={(e) => setBiomeAtSurface(e.target.checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="ocean-mask-toggle">Oceans mask overlay</Label>
+                  <input
+                    id="ocean-mask-toggle"
+                    type="checkbox"
+                    checked={showOceanMask}
+                    onChange={(e) => setShowOceanMask(e.target.checked)}
                   />
                 </div>
               </>
