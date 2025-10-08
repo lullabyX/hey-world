@@ -17,5 +17,10 @@ export const getResourceEntries = (): ResourceEntry[] => {
     ][]
   )
     .filter(([, def]) => !!(def as ResourceBlockDefinition).isResource)
+    .sort((a, b) => {
+      const aDef = a[1] as ResourceBlockDefinition;
+      const bDef = b[1] as ResourceBlockDefinition;
+      return aDef.resource.scarcity - bDef.resource.scarcity;
+    })
     .map((entry) => entry as ResourceEntry);
 };

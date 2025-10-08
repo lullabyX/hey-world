@@ -27,7 +27,6 @@ import { SimplexNoise } from 'three/examples/jsm/Addons.js';
 import {
   Block,
   BlockType,
-  createBlock,
   getResourceEntries,
   hasInstanceId,
 } from '@/lib/block';
@@ -444,6 +443,11 @@ const WorldChunk = ({
   };
 
   const generateTerrain = useCallback(() => {
+    // Resource noise
+    const resourceRng = new RandomNumberGenerator(seed);
+    const resources = getResourceEntries();
+    const resourceNoise = new SimplexNoise(resourceRng);
+
     // Create dedicated noise instances per layer using seeded RNGs
     const baseRng = new RandomNumberGenerator(seed + 101);
     const ridgedRng = new RandomNumberGenerator(seed + 202);
@@ -631,7 +635,32 @@ const WorldChunk = ({
         const treeScaledNoiseValue = treeNoiseValue * 0.3 + 0.2;
 
         for (let y = 0; y < height; y++) {
-          loadBlocksFromOutsideChunk(x, y, z);
+          for (const [resourceType, def] of resources) {
+            const block = getBlockAt(x, y, z);
+            if (block?.isResource) {
+              break;
+            }
+            const threshold = Math.min(
+              Math.max(
+                resourceControls[`${resourceType}::scarcity`] ??
+                  def.resource.scarcity,
+                0
+              ),
+              1
+            );
+            const value = resourceNoise.noise3d(
+              (x + xOffset) / def.resource.scale.x,
+              y / def.resource.scale.y,
+              (z + zOffset) / def.resource.scale.z
+            );
+            if (value > threshold) {
+              setBlockTypeAt(x, y, z, resourceType);
+            }
+          }
+
+          if (y > _height) {
+            loadBlocksFromOutsideChunk(x, y, z);
+          }
 
           const block = getBlockAt(x, y, z);
           const isResource = block?.isResource;
@@ -690,28 +719,22 @@ const WorldChunk = ({
         );
         const simplexNoise = new SimplexNoise(rng);
         for (let x = 0; x < width; x++) {
-          const slice: Block[][] = [];
           for (let y = 0; y < height; y++) {
-            const row: Block[] = [];
             for (let z = 0; z < width; z++) {
-              let block = createBlock('empty');
-              // const current = getBlockAt(x, y, z);
-              // if (!current) {
-              //   continue;
-              // }
+              const current = getBlockAt(x, y, z);
+              if (!current) {
+                continue;
+              }
               const value = simplexNoise.noise3d(
                 (x + xOffset) / scale.x,
                 y / scale.y,
                 (z + zOffset) / scale.z
               );
               if (value > threshold) {
-                block = createBlock(resourceType);
+                setBlockTypeAt(x, y, z, resourceType);
               }
-              row.push(block);
             }
-            slice.push(row);
           }
-          terrainData.current.push(slice);
         }
       });
     },
@@ -753,34 +776,32 @@ const WorldChunk = ({
       for (let y = 0; y < height; y++) {
         for (let z = 0; z < width; z++) {
           const block = getBlockAt(x, y, z);
-          if (!block || block.type === 'empty') {
-            continue;
-          }
-          if (!isBlockVisible(x, y, z)) {
-            continue;
-          }
-          // Center the world around origin
-          matrix.setPosition(x, y, z);
+          const notEmptyBlock = block && block.type !== 'empty';
+          const _isBlockVisible = isBlockVisible(x, y, z);
+          if (notEmptyBlock && _isBlockVisible) {
+            // Center the world around origin
+            matrix.setPosition(x, y, z);
 
-          const instanceId = meshRef.current.count;
-          setBlockInstanceIdAt(x, y, z, instanceId);
-          // Ensure the local block reference carries the instanceId for attribute writes
-          if (block) {
-            (block as Block).instanceId = instanceId;
+            const instanceId = meshRef.current.count;
+            setBlockInstanceIdAt(x, y, z, instanceId);
+            // Ensure the local block reference carries the instanceId for attribute writes
+            if (block) {
+              (block as Block).instanceId = instanceId;
+            }
+            meshRef.current.setMatrixAt(instanceId, matrix);
+            loadTextureTiles({
+              block,
+              uvTopArr,
+              uvSideArr,
+              uvBottomArr,
+              tintTopArr,
+              tintSideArr,
+              tintBottomArr,
+              atlas,
+            });
+            cutoutArr[instanceId] = block?.type === 'leaves' ? 1 : 0;
+            meshRef.current.count++;
           }
-          meshRef.current.setMatrixAt(instanceId, matrix);
-          loadTextureTiles({
-            block,
-            uvTopArr,
-            uvSideArr,
-            uvBottomArr,
-            tintTopArr,
-            tintSideArr,
-            tintBottomArr,
-            atlas,
-          });
-          cutoutArr[instanceId] = block?.type === 'leaves' ? 1 : 0;
-          meshRef.current.count++;
         }
       }
     }
@@ -1020,17 +1041,16 @@ const WorldChunk = ({
 
   // Initialize terrain and generate mesh when parameters change
   useLayoutEffect(() => {
-    const rng = new RandomNumberGenerator(seed);
     requestIdleCallback(
       () => {
-        generateResources({ rng });
+        initializeTerrain();
         generateTerrain();
         generateMesh();
         loadedRef.current = true;
       },
       { timeout: 1000 }
     );
-  }, [generateResources, generateTerrain, generateMesh, seed]);
+  }, [initializeTerrain, generateTerrain, generateMesh]);
 
   // Bind atlas texture to material when ready
   useEffect(() => {
