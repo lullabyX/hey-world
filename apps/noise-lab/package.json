@@ -17,7 +17,7 @@
     "clsx": "^2.1.1",
     "deepslate": "0.24.0",
     "leva": "^0.10.0",
-    "next": "15.4.7",
+    "next": "15.4.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.0.1",
